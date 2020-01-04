@@ -1,0 +1,9 @@
+C:\Users\Yoav\source\repos\TgenNetProtocol\TgenNetProtocol\bin\Debug\TgenNetProtocol.dll.config
+C:\Users\Yoav\source\repos\TgenNetProtocol\TgenNetProtocol\bin\Debug\TgenNetProtocol.dll
+C:\Users\Yoav\source\repos\TgenNetProtocol\TgenNetProtocol\bin\Debug\TgenNetProtocol.pdb
+C:\Users\Yoav\source\repos\TgenNetProtocol\TgenNetProtocol\obj\Debug\TgenNetProtocol.csprojAssemblyReference.cache
+C:\Users\Yoav\source\repos\TgenNetProtocol\TgenNetProtocol\obj\Debug\TgenNetProtocol.FormNetworkBehavour.resources
+C:\Users\Yoav\source\repos\TgenNetProtocol\TgenNetProtocol\obj\Debug\TgenNetProtocol.csproj.GenerateResource.cache
+C:\Users\Yoav\source\repos\TgenNetProtocol\TgenNetProtocol\obj\Debug\TgenNetProtocol.csproj.CoreCompileInputs.cache
+C:\Users\Yoav\source\repos\TgenNetProtocol\TgenNetProtocol\obj\Debug\TgenNetProtocol.dll
+C:\Users\Yoav\source\repos\TgenNetProtocol\TgenNetProtocol\obj\Debug\TgenNetProtocol.pdb
