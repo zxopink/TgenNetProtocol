@@ -20,12 +20,9 @@ bin/
 .idea/
 *.nupkg
 
+*.gitattributes
+
 /packages
-
-# ============ #
-# OS generated #
-# ============ #
-
 # ============ #
 # OS generated #
 # ============ #
