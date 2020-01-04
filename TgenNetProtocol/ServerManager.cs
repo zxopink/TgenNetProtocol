@@ -34,7 +34,6 @@ namespace TgenNetProtocol
             {
                 if (listener.Pending())
                 {
-                    Console.WriteLine("ah");
                     Console.WriteLine("Accepting new socket!");
                     TcpClient newClientListener = listener.AcceptTcpClient();
                     ClientData client = new ClientData();
