@@ -14,11 +14,13 @@ to start the server all you need to do is create a new object of ServerManager t
 
 `send a message`:
 you can send a message to a specific client by using the "Send" method 
-or you can send everyone a message by suing the "SendToAll" method
+or you can send everyone a message by using the "SendToAll" method
 or you can send to everyone except a specific client by using the "SendToAllExcept"
 
 `receive a message`:
-this one is fairly easy, a unique thing about this protocol is that the message receivement works by types and events and is being managed by attributes, simply make a new method inside your class (make sure the class inherits from the "NetworkBehavour" class or "FormNetworkBehavour" if you work with forms) and put a "[ServerNetworkReciver]" on it! the method must return void and take one custom argument (whatever type you choose) and an option secondly type of integer argument in case you want the ID of the client who sent the message.
+this one is fairly easy, a unique thing about this protocol is that the message receivement works by types and events and is being managed by attributes.
+simply make a new method inside your class (make sure the class inherits from the "NetworkBehavour" class or "FormNetworkBehavour" if you work with forms) and put a "[ServerNetworkReciver]" attributes on it!
+the method must return void and take one custom argument (whatever type you choose) and an option secondly type of integer argument in case you want the ID of the client who sent the message.
 the method will be invoked whenever the type of it's first argument was recived, if the first argument of the method is type of object the method will be called everytime a message is Recived.
 
 client side
@@ -32,7 +34,9 @@ to start the client all you need to do is create a new object of ClientManager t
 you can send a message to the server by using the "Send" method.
 
 `receive a message`:
-this one is fairly easy too and similar to the server, like the server you need to make a new method inside your class (make sure the class inherits from the "NetworkBehavour" class or "FormNetworkBehavour" if you work with forms) and put a "[ClientNetworkReciver]" on it! the method must return void and take one custom argument (whatever type you choose).
+this one is fairly easy too and similar to the server.
+just like the server you need to make a new method inside your class (make sure the class inherits from the "NetworkBehavour" class or "FormNetworkBehavour" if you work with forms) and put a "[ClientNetworkReciver]" attributes on it!
+the method must return void and take one custom argument (whatever type you choose).
 the method will be invoked whenever the type of it's first argument was recived by the server, if the first argument of the method is type of object the method will be called everytime a message is Recived.
 
 notes
