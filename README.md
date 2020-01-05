@@ -5,7 +5,6 @@ you can use both client and server in the same project, but it is recommended to
 
 *if you send a custom type please make sure it is serializable by using the [serializable] attribute!*
 
---------------------------------------------------------------------------------------------------------------------------------
 server side
 --------------------------------------------------------------------------------------------------------------------------------
 
@@ -22,7 +21,6 @@ or you can send to everyone except a specific client by using the "SendToAllExce
 this one is fairly easy, a unique thing about this protocol is that the message receivement works by types and events and is being managed by attributes, simply make a new method inside your class (make sure the class inherits from the "NetworkBehavour" class or "FormNetworkBehavour" if you work with forms) and put a "[ServerNetworkReciver]" on it! the method must return void and take one custom argument (whatever type you choose) and an option secondly type of integer argument in case you want the ID of the client who sent the message.
 the method will be invoked whenever the type of it's first argument was recived, if the first argument of the method is type of object the method will be called everytime a message is Recived.
 
---------------------------------------------------------------------------------------------------------------------------------
 client side
 --------------------------------------------------------------------------------------------------------------------------------
 
@@ -37,7 +35,6 @@ you can send a message to the server by using the "Send" method.
 this one is fairly easy too and similar to the server, like the server you need to make a new method inside your class (make sure the class inherits from the "NetworkBehavour" class or "FormNetworkBehavour" if you work with forms) and put a "[ClientNetworkReciver]" on it! the method must return void and take one custom argument (whatever type you choose).
 the method will be invoked whenever the type of it's first argument was recived by the server, if the first argument of the method is type of object the method will be called everytime a message is Recived.
 
---------------------------------------------------------------------------------------------------------------------------------
 notes
 --------------------------------------------------------------------------------------------------------------------------------
 please credit me if you use this protocol!

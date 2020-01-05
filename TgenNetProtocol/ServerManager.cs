@@ -42,7 +42,7 @@ namespace TgenNetProtocol
                     clients.Add(client);
                     ClientConnectedEvent?.Invoke(tcpClientsList.Count);
                     tcpClientsList.Add(newClientListener);
-
+                    
                     Thread t = new Thread(HandleIncomingClinetMessages);
                     threadList.Add(t);
                     //t.Start(sList[sList.Count - 1]);
