@@ -13,7 +13,7 @@ using System.Threading;
 
 namespace TgenNetProtocol
 {
-    public partial class FormNetworkBehavour : Form
+    public abstract partial class FormNetworkBehavour : Form
     {
         public FormNetworkBehavour()
         {

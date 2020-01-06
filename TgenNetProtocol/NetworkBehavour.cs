@@ -14,7 +14,7 @@ namespace TgenNetProtocol
         public object theMethodObject;
         public object[] parameters;
     }
-    public class NetworkBehavour
+    public abstract class NetworkBehavour
     {
         public List<MethodInvokeData> methods = new List<MethodInvokeData>();
         private Thread myThread;
