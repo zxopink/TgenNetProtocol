@@ -8,6 +8,11 @@ using System.Linq;
 
 namespace TgenNetProtocol
 {
+    public class NetWorkEvents : EventArgs
+    {
+        public int Client = -1;
+        public object message;
+    }
     struct ClientData
     {
         public TcpClient clientTcp;
@@ -17,10 +22,11 @@ namespace TgenNetProtocol
     {
         private Thread clientListenerThread;
         public delegate void MessageSent(object message);
-        public delegate void ClientDisconnected(int client);
-        public delegate void ClientConnected(int client);
-        public event ClientDisconnected ClientDisconnectedEvent;
-        public event ClientConnected ClientConnectedEvent;
+        //public delegate void ClientDisconnected(int client);
+        //public delegate void ClientConnected(int client);
+        public delegate void NetworkActivity(int client);
+        public event NetworkActivity ClientDisconnectedEvent;
+        public event NetworkActivity ClientConnectedEvent;
         private List<ClientData> clients = new List<ClientData>();
         private List<MessageSent> TypesSentEvents = new List<MessageSent>();
         private TcpListener listener;

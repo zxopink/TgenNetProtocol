@@ -6,6 +6,7 @@ using System.Linq;
 using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
+using UnityEngine;
 
 namespace TgenNetProtocol
 {
@@ -22,13 +23,13 @@ namespace TgenNetProtocol
     #endregion
     public class AttributeActions
     {
-        public static List<object> networkObjects = new List<object>();
+        public volatile static List<object> networkObjects = new List<object>();
 
         /// <summary>
         /// this bool let's other threads know if a message is being send
         /// the sending proccess takes time and cannot get changed at run-time (things might break)
         /// </summary>
-        public static bool isWorking = false;
+        public volatile static bool isWorking = false;
 
         #region Server Get Message
         public static void SendNewServerMessage(object message, int clientId)
@@ -65,6 +66,28 @@ namespace TgenNetProtocol
                                 else
                                 {
                                     var netObj = (FormNetworkBehavour)networkObject;
+                                    netObj.InvokeSafely(method, objectsToSend.ToArray(), networkObject);
+                                }
+                            }
+                        }
+                    }
+                    else if (networkObject is MonoNetwork)
+                    {
+                        foreach (var method in methodsInfo)
+                        {
+                            if (CheckMethodFirstParameterForServer(method) == message.GetType()
+                            || CheckMethodFirstParameterForServer(method) == typeof(object))
+                            {
+                                if (IsGetClientId(method))
+                                {
+                                    objectsToSend.Add(clientId);
+                                    var netObj = (MonoNetwork)networkObject;
+                                    netObj.InvokeSafely(method, objectsToSend.ToArray(), networkObject);
+                                    objectsToSend.Remove(clientId);
+                                }
+                                else
+                                {
+                                    var netObj = (MonoNetwork)networkObject;
                                     netObj.InvokeSafely(method, objectsToSend.ToArray(), networkObject);
                                 }
                             }
@@ -154,6 +177,18 @@ namespace TgenNetProtocol
                             || CheckMethodFirstParameterForClient(method) == typeof(object))
                             {
                                 var netObj = (FormNetworkBehavour)networkObject;
+                                netObj.InvokeSafely(method, objectsToSend.ToArray(), networkObject);
+                            }
+                        }
+                    }
+                    else if (networkObject is MonoNetwork)
+                    {
+                        foreach (var method in methodsInfo)
+                        {
+                            if (CheckMethodFirstParameterForClient(method) == message.GetType()
+                            || CheckMethodFirstParameterForClient(method) == typeof(object))
+                            {
+                                var netObj = (MonoNetwork)networkObject;
                                 netObj.InvokeSafely(method, objectsToSend.ToArray(), networkObject);
                             }
                         }

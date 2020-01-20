@@ -10,13 +10,20 @@ namespace TgenNetProtocol
     {
         private TcpClient tcpClient;
         private Thread MessageListener;
+        //public bool isConnected { get => tcpClient.Connected; }
         public ClientManager()
         {
-            tcpClient = new TcpClient();
+            tcpClient = new TcpClient(); //make an empty one that will be replaced for later
+        }
+
+        public bool IsConnected()
+        {
+            return tcpClient.Connected;
         }
 
         public void Connect(string ip, int port)
         {
+            tcpClient = new TcpClient(); //makes a new TcpClient in case the client wants to use the same clientmanager and reuse it or reconnect
             tcpClient.Connect(ip, port);
             MessageListener = new Thread(ListenToIncomingMessages);
             MessageListener.Start();
@@ -24,8 +31,8 @@ namespace TgenNetProtocol
 
         public void Close()
         {
-            MessageListener.Abort();
             tcpClient.Close();
+            MessageListener.Abort();
         }
 
         public void Send(object message)
@@ -36,6 +43,8 @@ namespace TgenNetProtocol
                 BinaryFormatter bi = new BinaryFormatter();
                 bi.Serialize(stm, message);
             }
+            else
+                Console.WriteLine("The client isn't connected to a server!");
         }
 
         private void ListenToIncomingMessages()
@@ -55,9 +64,14 @@ namespace TgenNetProtocol
                     }
                 }
             }
+            catch (ThreadAbortException)
+            { 
+                //this usually happens when the client closes the listener
+                //since the thread isn't in use so it aborts it
+            }
             catch (Exception e)
             {
-                Console.WriteLine("Error: " + e);
+                Console.WriteLine("Error: " + e.GetType());
             }
         }
     }
