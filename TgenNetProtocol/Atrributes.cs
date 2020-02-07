@@ -29,6 +29,7 @@ namespace TgenNetProtocol
         /// this bool let's other threads know if a message is being send
         /// the sending proccess takes time and cannot get changed at run-time (things might break)
         /// </summary>
+        //might need to remove the "volatile" keyword, check on that
         public volatile static bool isWorking = false;
 
         #region Server Get Message

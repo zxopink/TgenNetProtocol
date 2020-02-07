@@ -5,6 +5,7 @@ using System.Threading;
 using System.Runtime.Serialization.Formatters.Binary;
 using System.Runtime.CompilerServices;
 using System.Linq;
+using System.Runtime.InteropServices;
 
 namespace TgenNetProtocol
 {
@@ -32,28 +33,79 @@ namespace TgenNetProtocol
         private TcpListener listener;
         private List<TcpClient> tcpClientsList = new List<TcpClient>();
         private List<Thread> threadList = new List<Thread>();
-        public ServerManager(int port) => listener = TcpListener.Create(port);
+        private int port;
+        public ServerManager(int port) => this.port = port;
+
+        private bool active; // field
+        public bool Active   // property
+        {
+            get { return active; }
+        }
+        public int AmountOfClients   // property
+        {
+            get { return tcpClientsList.Count; }
+        }
 
         private void HandleIncomingClients()
         {
             while (true)
             {
-                if (listener.Pending())
+                try
                 {
-                    Console.WriteLine("Accepting new socket!");
-                    TcpClient newClientListener = listener.AcceptTcpClient();
-                    ClientData client = new ClientData();
-                    client.clientTcp = newClientListener;
-                    client.id = tcpClientsList.Count;
-                    clients.Add(client);
-                    ClientConnectedEvent?.Invoke(tcpClientsList.Count);
-                    tcpClientsList.Add(newClientListener);
-                    
-                    Thread t = new Thread(HandleIncomingClinetMessages);
-                    threadList.Add(t);
-                    //t.Start(sList[sList.Count - 1]);
-                    t.Start(client);
+                    if (active && listener.Pending())
+                    {
+                        Console.WriteLine("Accepting new socket!");
+                        TcpClient newClientListener = listener.AcceptTcpClient();
+                        ClientData client = new ClientData();
+                        client.clientTcp = newClientListener;
+                        client.id = tcpClientsList.Count;
+
+                        CheckForStream(client);
+
+                        Thread t = new Thread(HandleIncomingClinetMessages);
+                        threadList.Add(t);
+                        //t.Start(sList[sList.Count - 1]);
+                        t.Start(client); //let the client start before you add him to the list
+
+                        clients.Add(client);
+                        ClientConnectedEvent?.Invoke(tcpClientsList.Count);
+                        tcpClientsList.Add(newClientListener);
+                    }
                 }
+                catch (SocketException)
+                {
+                    Console.WriteLine("Had issue accepting an incoming client");
+                }
+            }
+        }
+
+        /// <summary>
+        /// This method makes sure the server and client can talk
+        /// through the network stream
+        /// </summary>
+        /// <param name="newC"></param>
+        private void CheckForStream(ClientData newC)
+        {
+            ClientData clientData = newC;
+            TcpClient clientTcp = clientData.clientTcp;
+            NetworkStream stm = clientTcp.GetStream();
+            stm.ReadTimeout = 100; //sets a readtimeout so the thread which listens to client won't hold for too long
+            try
+            {
+                BinaryFormatter bi = new BinaryFormatter();
+                object message = bi.Deserialize(stm);
+                if (message.ToString() == "Connected")
+                    bi.Serialize(stm, message);
+                else
+                    throw new SocketException();
+                stm.ReadTimeout = -1; //sets back the readtimeout to infinite
+            }
+            catch
+            {
+                stm.Close();
+                stm.Dispose();
+                clientTcp.Close();
+                throw new SocketException();
             }
         }
 
@@ -76,7 +128,7 @@ namespace TgenNetProtocol
             }
             //the program WILL crash when client server
             //the catch makes sure to handle the program properly when a client leaves
-            catch (Exception e)
+            catch
             {
                 //Console.WriteLine("Error: " + e);
                 //Console.WriteLine(clientData.id + " has disconnected");
@@ -92,16 +144,20 @@ namespace TgenNetProtocol
         /// <param name="client">The id of the client</param>
         private void AbortClient(int client)
         {
-            ClientDisconnectedEvent?.Invoke(client);
             Thread deadClientThread = threadList[client];
-            //MessageSentEvent -= (ServerCommunication.MessageSent)MessageBackMethod;
-            //it doesn't remove from the list because removing from the list makes the capacity smaller
-            //so clients who their id is bigger than the capacity will crash the program
-            Console.WriteLine("Aborting client: " + client);
-            tcpClientsList[client] = null;
-            threadList[client] = null;
-            if (deadClientThread != null)
+            TcpClient tcpClient = tcpClientsList[client];
+            if (deadClientThread != null && tcpClient != null)
+            {
+                ClientDisconnectedEvent?.Invoke(client);
+                //MessageSentEvent -= (ServerCommunication.MessageSent)MessageBackMethod;
+                //it doesn't remove from the list because removing from the list makes the capacity smaller
+                //so clients who their id is bigger than the capacity will crash the program
+                tcpClientsList[client] = null;
+                threadList[client] = null;
+                Console.WriteLine("Aborting client: " + client);
+                tcpClient.Close();
                 deadClientThread.Abort();
+            }
         }
 
         /// <summary>
@@ -115,12 +171,14 @@ namespace TgenNetProtocol
 
         public void KickClient(int client)
         {
-            if (client < clients.Count)
+            Thread deadClientThread = threadList[client];
+            TcpClient tcpClient = tcpClientsList[client];
+            if (client < clients.Count && (deadClientThread != null && tcpClient != null))
             {
-                Thread deadClientThread = threadList[client];
-                Console.WriteLine("Kicking client: " + client);
                 tcpClientsList[client] = null;
                 threadList[client] = null;
+                Console.WriteLine("Kicking client: " + client);
+                tcpClient.Close();
                 deadClientThread.Abort();
             }
             else
@@ -135,7 +193,8 @@ namespace TgenNetProtocol
         public void Send(object Message, int client)
         {
             TcpClient clientTcp = clients[client].clientTcp;
-            if (clientTcp.Connected)
+            Thread clientThread = threadList[client];
+            if (clientTcp.Connected && clientThread != null)
             {
                 NetworkStream stm = clientTcp.GetStream();
                 BinaryFormatter bi = new BinaryFormatter();
@@ -152,16 +211,22 @@ namespace TgenNetProtocol
         /// <param name="Message">The message you want to send</param>
         public void SendToAll(object Message)
         {
-            for (int i = 0; i < clients.Count; i++)
+            if (clients.Count >= 0)
             {
-                TcpClient clientTcp = clients[i].clientTcp;
-                if (clientTcp.Connected)
+                for (int i = 0; i < clients.Count; i++)
                 {
-                    NetworkStream stm = clientTcp.GetStream();
-                    BinaryFormatter bi = new BinaryFormatter();
-                    bi.Serialize(stm, Message);
+                    TcpClient clientTcp = clients[i].clientTcp;
+                    Thread clientThread = threadList[i];
+                    if (clientTcp.Connected && clientThread != null)
+                    {
+                        NetworkStream stm = clientTcp.GetStream();
+                        BinaryFormatter bi = new BinaryFormatter();
+                        bi.Serialize(stm, Message);
+                    }
                 }
             }
+            else
+                Console.WriteLine("No clients are connected!");
         }
 
         /// <summary>
@@ -171,43 +236,84 @@ namespace TgenNetProtocol
         /// <param name="client">The client that won't get the message</param>
         public void SendToAllExcept(object Message, int client)
         {
-            for (int i = 0; i < clients.Count; i++)
+            if (clients.Count >= 0)
             {
-                if (i != client)
+                for (int i = 0; i < clients.Count; i++)
                 {
-                    TcpClient clientTcp = clients[i].clientTcp;
-                    if (clientTcp.Connected)
+                    if (i != client)
                     {
-                        NetworkStream stm = clientTcp.GetStream();
-                        BinaryFormatter bi = new BinaryFormatter();
-                        bi.Serialize(stm, Message);
+                        TcpClient clientTcp = clients[i].clientTcp;
+                        Thread clientThread = threadList[i];
+                        if (clientTcp.Connected && clientThread != null)
+                        {
+                            NetworkStream stm = clientTcp.GetStream();
+                            BinaryFormatter bi = new BinaryFormatter();
+                            bi.Serialize(stm, Message);
+                        }
                     }
                 }
             }
+            else
+                Console.WriteLine("No clients are connected!");
         }
 
         public void Start()
         {
-            listener.Start();
-            clientListenerThread = new Thread(HandleIncomingClients);
-            clientListenerThread.Start();
+            if (!active)
+            {
+                active = true;
+                listener = TcpListener.Create(port);
+                listener.Start();
+                clientListenerThread = new Thread(HandleIncomingClients);
+                clientListenerThread.Start();
+            }
+            else
+                Console.WriteLine("The listener is already open!");
         }
         public void Start(int backlog)
         {
+            if (!active)
+            {
+                active = true;
+            listener = TcpListener.Create(port);
             listener.Start(backlog);
             clientListenerThread = new Thread(HandleIncomingClients);
             clientListenerThread.Start();
+            }
+            else
+                Console.WriteLine("The listener is already open!");
         }
 
         /// <summary>
-        /// Stops the listener then aborts all the connected client before it aborts the  thread that listens to incoming clients
+        /// Stops the listener but keeps all the connected clients.
+        /// Will not accept any incoming clients
         /// </summary>
         public void Stop()
         {
-            for (int i = 0; i < tcpClientsList.Count; i++)
-                AbortClient(i);
-            clientListenerThread.Abort();
-            listener.Stop();
+            if (active && listener != null)
+            {
+                active = false;
+                listener.Stop();
+                clientListenerThread.Abort();
+            }
+            else
+                Console.WriteLine("The listener is already closed!");
+        }
+        /// <summary>
+        /// Stops the listener then aborts all the connected client before it aborts the thread that listens to incoming clients
+        /// </summary>
+        public void Close()
+        {
+            if (active && listener != null)
+            {
+                active = false;
+                listener.Stop();
+                for (int i = 0; i < tcpClientsList.Count; i++)
+                    AbortClient(i);
+                clientListenerThread.Abort();
+            }
+            else
+                Console.WriteLine("The listener is already closed!");
         }
     }
 }
