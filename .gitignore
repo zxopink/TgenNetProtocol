@@ -17,6 +17,7 @@ Source/Source.sln
 *.booproj
 bin/
 .vs/
+TestDotNetCore/
 .idea/
 *.nupkg
 

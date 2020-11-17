@@ -6,7 +6,7 @@ using System.Linq;
 using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
-using UnityEngine;
+//using UnityEngine;
 
 namespace TgenNetProtocol
 {
@@ -32,6 +32,22 @@ namespace TgenNetProtocol
         //might need to remove the "volatile" keyword, check on that
         public volatile static bool isWorking = false;
 
+        private static List<Type> GetAllTypes()
+        {
+            List<Type> allNetworkTypes = new List<Type>();
+
+            List<string> allNetworkTypesStr = new List<string>();
+            allNetworkTypesStr.Add("TgenNetProtocol.NetworkBehavour");
+            allNetworkTypesStr.Add("TgenNetProtocol.FormNetworkBehavour");
+            allNetworkTypesStr.Add("TgenNetProtocol.MonoNetwork");
+
+            for (int i = 0; i < allNetworkTypesStr.Count; i++)
+            {
+                try { allNetworkTypes.Add(Type.GetType(allNetworkTypesStr[i], true)); }
+                catch { /*Console.WriteLine("could not find " + allNetworkTypesStr[i], true); */ }
+            }
+            return allNetworkTypes;
+        }
         #region Server Get Message
         public static void SendNewServerMessage(object message, int clientId)
         {
@@ -48,31 +64,22 @@ namespace TgenNetProtocol
                     // looking for an attribute
                     var methodsInfo = type.GetMethods().Where(x => x.GetCustomAttributes(typeof(ServerNetworkReciverAttribute), false).FirstOrDefault() != null);
 
+                    //meaning the file doesn't exist in the project
+                    //not a Windows project
+
                     //this part checks for form variables which cannot be touched from multiple threads
                     //so it handles multiple thread in forms
-                    if (networkObject is FormNetworkBehavour)
+
+                    //if (networkObject is FormNetworkBehavour)
+                    //if (networkObject.GetType().IsAssignableFrom(Type.GetType("TgenNetProtocol.FormNetworkBehavour")))
+                    if (networkObject.GetType().IsSubclassOf(Type.GetType("TgenNetProtocol.FormNetworkBehavour")))
                     {
-                        foreach (var method in methodsInfo)
-                        {
-                            if (CheckMethodFirstParameterForServer(method) == message.GetType()
-                            || CheckMethodFirstParameterForServer(method) == typeof(object))
-                            {
-                                if (IsGetClientId(method))
-                                {
-                                    objectsToSend.Add(clientId);
-                                    var netObj = (FormNetworkBehavour)networkObject;
-                                    netObj.InvokeSafely(method, objectsToSend.ToArray(), networkObject);
-                                    objectsToSend.Remove(clientId);
-                                }
-                                else
-                                {
-                                    var netObj = (FormNetworkBehavour)networkObject;
-                                    netObj.InvokeSafely(method, objectsToSend.ToArray(), networkObject);
-                                }
-                            }
-                        }
+                        FormHandlerServer(clientId, methodsInfo, message, networkObject, objectsToSend);
                     }
+
+                    /*
                     else if (networkObject is MonoNetwork)
+                    //else if(networkObject.GetType().IsAssignableFrom(Type.GetType("TgenNetProtocol.MonoNetwork")))
                     {
                         foreach (var method in methodsInfo)
                         {
@@ -94,7 +101,10 @@ namespace TgenNetProtocol
                             }
                         }
                     }
+                    */
+
                     //this is for normal situations (CMD (console) for example)
+                    //if(networkObject is NetworkBehavour)
                     else
                     {
                         foreach (var method in methodsInfo)
@@ -121,6 +131,36 @@ namespace TgenNetProtocol
             }
             isWorking = false;
         }
+
+        /// <summary>
+        /// Since the project is multiplatform and works with Windows form, things might get messy when a different platfrom touches the windows forms
+        /// to fix that, this method will only be invoked if forms exist in the current project and don't throw a 'FileNotFoundException'
+        /// if the code touches a method that includes a type that isn't in the assembly, so program will only call this method IF forms can be found in the proeject
+        /// and if not, it will safely avoid it
+        /// </summary>
+        private static void FormHandlerServer(int clientId, IEnumerable<MethodInfo> methodsInfo, object message, object networkObject, List<object> objectsToSend)
+        {
+            foreach (var method in methodsInfo)
+            {
+                if (CheckMethodFirstParameterForServer(method) == message.GetType()
+                || CheckMethodFirstParameterForServer(method) == typeof(object))
+                {
+                    if (IsGetClientId(method))
+                    {
+                        objectsToSend.Add(clientId);
+                        var netObj = (FormNetworkBehavour)networkObject;
+                        netObj.InvokeSafely(method, objectsToSend.ToArray(), networkObject);
+                        objectsToSend.Remove(clientId);
+                    }
+                    else
+                    {
+                        var netObj = (FormNetworkBehavour)networkObject;
+                        netObj.InvokeSafely(method, objectsToSend.ToArray(), networkObject);
+                    }
+                }
+            }
+        }
+
         private static Type CheckMethodFirstParameterForServer(MethodInfo method) //ISSUE: throws an error when a client runs it, but works fine on both sides
         {
             var parameters = method.GetParameters().ToList();
@@ -170,8 +210,13 @@ namespace TgenNetProtocol
 
                     //this part checks for form variables which cannot be touched from multiple threads
                     //so it handles multiple thread in forms
-                    if (networkObject is FormNetworkBehavour)
+
+                    //if (networkObject is FormNetworkBehavour)
+                    //if (networkObject.GetType().IsAssignableFrom(Type.GetType("TgenNetProtocol.FormNetworkBehavour")))
+                    if (networkObject.GetType().IsSubclassOf(Type.GetType("TgenNetProtocol.FormNetworkBehavour")))
                     {
+                        FormHandlerClient(methodsInfo, message, networkObject, objectsToSend);
+                        /*
                         foreach (var method in methodsInfo)
                         {
                             if (CheckMethodFirstParameterForClient(method) == message.GetType()
@@ -181,9 +226,13 @@ namespace TgenNetProtocol
                                 netObj.InvokeSafely(method, objectsToSend.ToArray(), networkObject);
                             }
                         }
+                        */
                     }
+                    /*
                     else if (networkObject is MonoNetwork)
+                    //else if(networkObject.GetType().IsAssignableFrom(Type.GetType("TgenNetProtocol.MonoNetwork")))
                     {
+                        Console.WriteLine("failed to detect the correct one");
                         foreach (var method in methodsInfo)
                         {
                             if (CheckMethodFirstParameterForClient(method) == message.GetType()
@@ -194,9 +243,12 @@ namespace TgenNetProtocol
                             }
                         }
                     }
+                    */
                     //this is for normal situtations (CMD (console) for example)
+                    //if(networkObject is NetworkBehavour)
                     else
                     {
+                        Console.WriteLine("failed to detect the correct one");
                         foreach (var method in methodsInfo)
                         {
                             if (CheckMethodFirstParameterForClient(method) == message.GetType()
@@ -210,6 +262,20 @@ namespace TgenNetProtocol
             }
             isWorking = false;
         }
+
+        public static void FormHandlerClient(IEnumerable<MethodInfo> methodsInfo, object message, object networkObject, List<object> objectsToSend)
+        {
+            foreach (var method in methodsInfo)
+            {
+                if (CheckMethodFirstParameterForClient(method) == message.GetType()
+                || CheckMethodFirstParameterForClient(method) == typeof(object))
+                {
+                    var netObj = (FormNetworkBehavour)networkObject;
+                    netObj.InvokeSafely(method, objectsToSend.ToArray(), networkObject);
+                }
+            }
+        }
+
         private static Type CheckMethodFirstParameterForClient(MethodInfo method) //ISSUE: throws an error when a client runs it, but works fine on both sides
         {
             var parameters = method.GetParameters().ToList();

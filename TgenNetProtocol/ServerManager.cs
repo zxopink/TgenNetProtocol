@@ -6,6 +6,7 @@ using System.Runtime.Serialization.Formatters.Binary;
 using System.Runtime.CompilerServices;
 using System.Linq;
 using System.Runtime.InteropServices;
+using System.Net;
 
 namespace TgenNetProtocol
 {
@@ -17,6 +18,7 @@ namespace TgenNetProtocol
     struct ClientData
     {
         public TcpClient clientTcp;
+        public bool activeClient;
         public int id;
     }
     public class ServerManager
@@ -34,6 +36,9 @@ namespace TgenNetProtocol
         private List<TcpClient> tcpClientsList = new List<TcpClient>();
         private List<Thread> threadList = new List<Thread>();
         private int port;
+
+        private bool listen = false; //made to control the listening thread
+
         public ServerManager(int port) => this.port = port;
 
         private bool active; // field
@@ -46,9 +51,30 @@ namespace TgenNetProtocol
             get { return tcpClientsList.Count; }
         }
 
+        public string PublicIp
+        {
+            get { return new WebClient().DownloadString("http://icanhazip.com"); }
+        }
+
+        public string LocalIp
+        {
+            get
+            {
+                var host = Dns.GetHostEntry(Dns.GetHostName());
+                foreach (var ip in host.AddressList)
+                {
+                    if (ip.AddressFamily == AddressFamily.InterNetwork)
+                    {
+                        return ip.ToString();
+                    }
+                }
+                throw new Exception("No network adapters with an IPv4 address in the system!");
+            }
+        }
+
         private void HandleIncomingClients()
         {
-            while (true)
+            while (active)
             {
                 try
                 {
@@ -56,8 +82,13 @@ namespace TgenNetProtocol
                     {
                         Console.WriteLine("Accepting new socket!");
                         TcpClient newClientListener = listener.AcceptTcpClient();
+
+                        newClientListener.NoDelay = true; //disables delay which occures when sending small chunks or data
+                        newClientListener.Client.NoDelay = true; //disables delay which occures when sending small chunks or data
+
                         ClientData client = new ClientData();
                         client.clientTcp = newClientListener;
+                        client.activeClient = true;
                         client.id = tcpClientsList.Count;
 
                         CheckForStream(client);
@@ -116,7 +147,7 @@ namespace TgenNetProtocol
             NetworkStream stm = clientTcp.GetStream();
             try
             {
-                while (clientTcp.Connected)
+                while (clientTcp.Connected && clientData.activeClient)
                 {
                     BinaryFormatter bi = new BinaryFormatter();
                     object message = bi.Deserialize(stm);
@@ -132,10 +163,10 @@ namespace TgenNetProtocol
             {
                 //Console.WriteLine("Error: " + e);
                 //Console.WriteLine(clientData.id + " has disconnected");
-                stm.Close();
-                stm.Dispose();
-                AbortClient(clientData.id);
             }
+            stm.Close();
+            stm.Dispose();
+            AbortClient(clientData.id);
         }
 
         /// <summary>
@@ -146,6 +177,7 @@ namespace TgenNetProtocol
         {
             Thread deadClientThread = threadList[client];
             TcpClient tcpClient = tcpClientsList[client];
+            ClientData data = clients[client];
             if (deadClientThread != null && tcpClient != null)
             {
                 ClientDisconnectedEvent?.Invoke(client);
@@ -156,7 +188,8 @@ namespace TgenNetProtocol
                 threadList[client] = null;
                 Console.WriteLine("Aborting client: " + client);
                 tcpClient.Close();
-                deadClientThread.Abort();
+                data.activeClient = false;
+                //deadClientThread.Abort();
             }
         }
 
@@ -173,13 +206,15 @@ namespace TgenNetProtocol
         {
             Thread deadClientThread = threadList[client];
             TcpClient tcpClient = tcpClientsList[client];
+            ClientData data = clients[client];
             if (client < clients.Count && (deadClientThread != null && tcpClient != null))
             {
                 tcpClientsList[client] = null;
                 threadList[client] = null;
                 Console.WriteLine("Kicking client: " + client);
                 tcpClient.Close();
-                deadClientThread.Abort();
+                data.activeClient = false;
+                //deadClientThread.Abort();
             }
             else
                 Console.WriteLine("The client you tried to kick isn't in the list!");
@@ -196,9 +231,13 @@ namespace TgenNetProtocol
             Thread clientThread = threadList[client];
             if (clientTcp.Connected && clientThread != null)
             {
-                NetworkStream stm = clientTcp.GetStream();
-                BinaryFormatter bi = new BinaryFormatter();
-                bi.Serialize(stm, Message);
+                try
+                {
+                    NetworkStream stm = clientTcp.GetStream();
+                    BinaryFormatter bi = new BinaryFormatter();
+                    bi.Serialize(stm, Message);
+                }
+                catch { /*client left as the message was serialized*/ }
             }
             else
                 Console.WriteLine("You are trying to send a message to a client who's not connected!");
@@ -219,9 +258,13 @@ namespace TgenNetProtocol
                     Thread clientThread = threadList[i];
                     if (clientTcp.Connected && clientThread != null)
                     {
-                        NetworkStream stm = clientTcp.GetStream();
-                        BinaryFormatter bi = new BinaryFormatter();
-                        bi.Serialize(stm, Message);
+                        try
+                        {
+                            NetworkStream stm = clientTcp.GetStream();
+                            BinaryFormatter bi = new BinaryFormatter();
+                            bi.Serialize(stm, Message);
+                        }
+                        catch { /*client left as the message was serialized*/ }
                     }
                 }
             }
@@ -246,9 +289,13 @@ namespace TgenNetProtocol
                         Thread clientThread = threadList[i];
                         if (clientTcp.Connected && clientThread != null)
                         {
-                            NetworkStream stm = clientTcp.GetStream();
-                            BinaryFormatter bi = new BinaryFormatter();
-                            bi.Serialize(stm, Message);
+                            try
+                            {
+                                NetworkStream stm = clientTcp.GetStream();
+                                BinaryFormatter bi = new BinaryFormatter();
+                                bi.Serialize(stm, Message);
+                            }
+                            catch { /*client left as the message was serialized*/ }
                         }
                     }
                 }
@@ -274,7 +321,7 @@ namespace TgenNetProtocol
         {
             if (!active)
             {
-                active = true;
+            active = true;
             listener = TcpListener.Create(port);
             listener.Start(backlog);
             clientListenerThread = new Thread(HandleIncomingClients);
@@ -294,7 +341,7 @@ namespace TgenNetProtocol
             {
                 active = false;
                 listener.Stop();
-                clientListenerThread.Abort();
+                //clientListenerThread.Abort();
             }
             else
                 Console.WriteLine("The listener is already closed!");
@@ -310,7 +357,7 @@ namespace TgenNetProtocol
                 listener.Stop();
                 for (int i = 0; i < tcpClientsList.Count; i++)
                     AbortClient(i);
-                clientListenerThread.Abort();
+                //clientListenerThread.Abort();
             }
             else
                 Console.WriteLine("The listener is already closed!");

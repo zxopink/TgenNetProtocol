@@ -4,10 +4,11 @@ using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
 using System.Threading;
-using UnityEngine;
+//using UnityEngine;
 
 namespace TgenNetProtocol
 {
+    /*
     public class SafeMonoInvokeData
     {
         public SafeMonoInvokeData(MethodInfo method, object theMethodObject, object[] parameters)
@@ -138,4 +139,5 @@ namespace TgenNetProtocol
         }
     }
 //#endif
+*/
 }
