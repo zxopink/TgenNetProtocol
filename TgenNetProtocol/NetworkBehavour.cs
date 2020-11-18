@@ -11,7 +11,7 @@ namespace TgenNetProtocol
     public struct MethodInvokeData
     {
         public MethodInfo method;
-        public object theMethodObject;
+        public object methodObjects;
         public object[] parameters;
     }
     public abstract class NetworkBehavour
@@ -56,7 +56,7 @@ namespace TgenNetProtocol
             {
                 foreach (var methodData in methods)
                 {
-                    methodData.method.Invoke(methodData.theMethodObject, methodData.parameters);
+                    methodData.method.Invoke(methodData.methodObjects, methodData.parameters);
                 }
             }
         }

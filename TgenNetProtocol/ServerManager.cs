@@ -97,7 +97,6 @@ namespace TgenNetProtocol
                         threadList.Add(t);
                         //t.Start(sList[sList.Count - 1]);
                         t.Start(client); //let the client start before you add him to the list
-
                         clients.Add(client);
                         ClientConnectedEvent?.Invoke(tcpClientsList.Count);
                         tcpClientsList.Add(newClientListener);
@@ -129,9 +128,9 @@ namespace TgenNetProtocol
                     bi.Serialize(stm, message);
                 else
                     throw new SocketException();
-                stm.ReadTimeout = -1; //sets back the readtimeout to infinite
+                stm.ReadTimeout = Timeout.Infinite; //sets back the readtimeout to infinite
             }
-            catch
+            catch (Exception)
             {
                 stm.Close();
                 stm.Dispose();

@@ -63,7 +63,6 @@ namespace TgenNetProtocol
                     // get method by name,  or loop through all methods
                     // looking for an attribute
                     var methodsInfo = type.GetMethods().Where(x => x.GetCustomAttributes(typeof(ServerNetworkReciverAttribute), false).FirstOrDefault() != null);
-
                     //meaning the file doesn't exist in the project
                     //not a Windows project
 
@@ -248,7 +247,6 @@ namespace TgenNetProtocol
                     //if(networkObject is NetworkBehavour)
                     else
                     {
-                        Console.WriteLine("failed to detect the correct one");
                         foreach (var method in methodsInfo)
                         {
                             if (CheckMethodFirstParameterForClient(method) == message.GetType()
