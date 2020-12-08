@@ -4,11 +4,10 @@ using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
 using System.Threading;
-//using UnityEngine;
+using UnityEngine;
 
 namespace TgenNetProtocol
 {
-    /*
     public class SafeMonoInvokeData
     {
         public SafeMonoInvokeData(MethodInfo method, object theMethodObject, object[] parameters)
@@ -22,34 +21,48 @@ namespace TgenNetProtocol
         public object[] parameters;
     }
     //#if UNITY_5_3_OR_NEWER
-    public class MonoNetwork : MonoBehaviour
+    public class MonoNetwork : MonoBehaviour, INetworkObject
     {
         //'volatile', might wanna check what that does
         volatile List<SafeMonoInvokeData> waitingMethods = new List<SafeMonoInvokeData>();
         volatile bool isInvokingMethods = false;
+
+        private IEnumerable<MethodInfo> serverMethods;
+        private IEnumerable<MethodInfo> clientMethods;
+        public IEnumerable<MethodInfo> ServerMethods { get => serverMethods; }
+        public IEnumerable<MethodInfo> ClientMethods { get => clientMethods; }
+
         public MonoNetwork()
         {
-            AttributeActions.networkObjects.Add(this);
-            //Thread addToList = new Thread(AddToAttributes);
-            //addToList.Start();
+            SetUpMethods();
+
+            Thread addToList = new Thread(AddToAttributes);
+            addToList.Start();
+        }
+
+        public void SetUpMethods()
+        {
+            Type type = this.GetType();
+            serverMethods = type.GetMethods().Where(x => x.GetCustomAttributes(typeof(ServerNetworkReciverAttribute), false).FirstOrDefault() != null);
+            clientMethods = type.GetMethods().Where(x => x.GetCustomAttributes(typeof(ClientNetworkReciverAttribute), false).FirstOrDefault() != null);
         }
 
         public void Update()
         {
-            if (waitingMethods.Count != 0)
+            isInvokingMethods = true;
+            lock (waitingMethods)
             {
-                isInvokingMethods = true;
-                foreach (var methodData in waitingMethods) //maybe change waitingMethods to waitingMethods.ToList() if problems raise
+                if (waitingMethods.Count != 0)
                 {
-                    methodData.method.Invoke(methodData.theMethodObject, methodData.parameters);
-                    waitingMethods.Remove(methodData);
+                    foreach (var methodData in waitingMethods) //maybe change waitingMethods to waitingMethods.ToList() if problems raise
+                    {
+                        methodData.method.Invoke(methodData.theMethodObject, methodData.parameters);
+                        //waitingMethods.Remove(methodData);
+                    }
+                    waitingMethods = new List<SafeMonoInvokeData>();
                 }
-                //for (int i = waitingMethods.Count - 1; i >= 0; i--)
-                //{
-                //    waitingMethods.RemoveAt(i);
-                //}
-                isInvokingMethods = false;
             }
+            isInvokingMethods = false;
         }
 
         /// <summary>
@@ -75,10 +88,13 @@ namespace TgenNetProtocol
             bool isDone = false;
             while (!isDone)
             {
-                if (!isInvokingMethods)
+                lock (waitingMethods)
                 {
-                    waitingMethods.Add(data);
-                    isDone = true;
+                    if (!isInvokingMethods)
+                    {
+                        waitingMethods.Add(data);
+                        isDone = true;
+                    }
                 }
             }
         }
@@ -137,7 +153,25 @@ namespace TgenNetProtocol
                 addToList.Start(new SafeMonoInvokeData(method, ObjectThatOwnsTheMethod, objetsToSend));
             }
         }
+
+        private void RemoveFromAttributes()
+        {
+            bool isDone = false;
+            while (!isDone)
+            {
+                if (!AttributeActions.isWorking)
+                {
+                    AttributeActions.networkObjectsToRemove.Remove(this);
+                    isDone = true;
+                }
+            }
+        }
+
+        public void Dispose()
+        {
+            Thread removeFromList = new Thread(RemoveFromAttributes);
+            removeFromList.Start();
+        }
     }
 //#endif
-*/
 }

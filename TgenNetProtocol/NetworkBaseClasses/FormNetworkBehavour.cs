@@ -13,12 +13,26 @@ using System.Threading;
 
 namespace TgenNetProtocol
 {
-    public partial class FormNetworkBehavour : Form
+    public partial class FormNetworkBehavour : Form, INetworkObject
     {
+        private IEnumerable<MethodInfo> serverMethods;
+        private IEnumerable<MethodInfo> clientMethods;
+        public IEnumerable<MethodInfo> ServerMethods { get => serverMethods; }
+        public IEnumerable<MethodInfo> ClientMethods { get => clientMethods; }
+
         public FormNetworkBehavour()
         {
+            SetUpMethods();
+
             Thread addToList = new Thread(AddToAttributes);
             addToList.Start();
+        }
+
+        public void SetUpMethods()
+        {
+            Type type = this.GetType();
+            serverMethods = type.GetMethods().Where(x => x.GetCustomAttributes(typeof(ServerNetworkReciverAttribute), false).FirstOrDefault() != null);
+            clientMethods = type.GetMethods().Where(x => x.GetCustomAttributes(typeof(ClientNetworkReciverAttribute), false).FirstOrDefault() != null);
         }
 
         /// <summary>
@@ -36,6 +50,32 @@ namespace TgenNetProtocol
                     isDone = true;
                 }
             }
+        }
+
+        private void RemoveFromAttributes()
+        {
+            bool isDone = false;
+            while (!isDone)
+            {
+                if (!AttributeActions.isWorking)
+                {
+                    AttributeActions.networkObjectsToRemove.Remove(this);
+                    isDone = true;
+                }
+            }
+        }
+
+        //Hiding isn't intended as it is used for basic dispose, this one is for network dispose
+#pragma warning disable CS0108 // 'FormNetworkBehavour.Dispose()' hides inherited member 'Component.Dispose()'. Use the new keyword if hiding was intended.
+        public void Dispose()
+#pragma warning restore CS0108 // 'FormNetworkBehavour.Dispose()' hides inherited member 'Component.Dispose()'. Use the new keyword if hiding was intended.
+        {
+            Thread removeFromList = new Thread(RemoveFromAttributes);
+            removeFromList.Start();
+            base.Dispose(true);
+            //Thread removeFromList = new Thread(RemoveFromAttributes);
+            //removeFromList.Start(); //the attribute class takes care of null
+            //GC.SuppressFinalize(this);
         }
 
         private void FormNetworkBehavour_Load(object sender, EventArgs e)

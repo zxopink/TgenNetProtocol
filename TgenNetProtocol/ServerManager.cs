@@ -21,7 +21,7 @@ namespace TgenNetProtocol
         public bool activeClient;
         public int id;
     }
-    public class ServerManager
+    public class ServerManager : GeneralNetworkManager, IDisposable
     {
         private Thread clientListenerThread;
         public delegate void MessageSent(object message);
@@ -37,9 +37,9 @@ namespace TgenNetProtocol
         private List<Thread> threadList = new List<Thread>();
         private int port;
 
-        private bool listen = false; //made to control the listening thread
+        //private bool listen = false; //made to control the listening thread
 
-        public ServerManager(int port) => this.port = port;
+        public ServerManager(int port) {this.port = port; AttributeActions.CheckAvailableAssemblies(); }
 
         private bool active; // field
         public bool Active   // property
@@ -53,8 +53,11 @@ namespace TgenNetProtocol
 
         public string PublicIp
         {
-            get { return new WebClient().DownloadString("http://icanhazip.com"); }
+            get { try { return new WebClient().DownloadString("http://icanhazip.com"); } catch(Exception) { return "Unable to load public IP"; } }
         }
+
+        public int Port
+        { get { return port; } }
 
         public string LocalIp
         {
@@ -68,7 +71,8 @@ namespace TgenNetProtocol
                         return ip.ToString();
                     }
                 }
-                throw new Exception("No network adapters with an IPv4 address in the system!");
+                return "No network adapters with an IPv4 address in the system!";
+                //throw new Exception("No network adapters with an IPv4 address in the system!");
             }
         }
 
@@ -91,15 +95,15 @@ namespace TgenNetProtocol
                         client.activeClient = true;
                         client.id = tcpClientsList.Count;
 
-                        CheckForStream(client);
+                        //CheckForStream(client);
 
                         Thread t = new Thread(HandleIncomingClinetMessages);
                         threadList.Add(t);
                         //t.Start(sList[sList.Count - 1]);
                         t.Start(client); //let the client start before you add him to the list
                         clients.Add(client);
-                        ClientConnectedEvent?.Invoke(tcpClientsList.Count);
                         tcpClientsList.Add(newClientListener);
+                        ClientConnectedEvent?.Invoke(client.id);
                     }
                 }
                 catch (SocketException)
@@ -119,6 +123,7 @@ namespace TgenNetProtocol
             ClientData clientData = newC;
             TcpClient clientTcp = clientData.clientTcp;
             NetworkStream stm = clientTcp.GetStream();
+            Console.WriteLine(clientTcp.Client.LocalEndPoint.AddressFamily);
             stm.ReadTimeout = 100; //sets a readtimeout so the thread which listens to client won't hold for too long
             try
             {
@@ -132,8 +137,7 @@ namespace TgenNetProtocol
             }
             catch (Exception)
             {
-                stm.Close();
-                stm.Dispose();
+                stm.Close(); //close is disposed
                 clientTcp.Close();
                 throw new SocketException();
             }
@@ -150,6 +154,7 @@ namespace TgenNetProtocol
                 {
                     BinaryFormatter bi = new BinaryFormatter();
                     object message = bi.Deserialize(stm);
+                    TgenLog.Log("got message from client " + clientData.id);
                     //ServerCommunication.Program.MessageRecived(message, user);
                     //ServerNetworkReciverAttribute callAll = new ServerNetworkReciverAttribute();
                     //callAll.SendNewMessage(message);
@@ -158,13 +163,13 @@ namespace TgenNetProtocol
             }
             //the program WILL crash when client server
             //the catch makes sure to handle the program properly when a client leaves
-            catch
+            catch (Exception e)
             {
+                TgenLog.Log(e.ToString());
                 //Console.WriteLine("Error: " + e);
                 //Console.WriteLine(clientData.id + " has disconnected");
             }
-            stm.Close();
-            stm.Dispose();
+            stm.Close(); //close is disposed
             AbortClient(clientData.id);
         }
 
@@ -226,20 +231,20 @@ namespace TgenNetProtocol
         /// <param name="client">The id of the client who's supposed to get the message</param>
         public void Send(object Message, int client)
         {
-            TcpClient clientTcp = clients[client].clientTcp;
-            Thread clientThread = threadList[client];
-            if (clientTcp.Connected && clientThread != null)
-            {
-                try
+                TcpClient clientTcp = clients[client].clientTcp;
+                Thread clientThread = threadList[client];
+                if (clientTcp.Connected && clientThread != null)
                 {
+                    try
+                    {
                     NetworkStream stm = clientTcp.GetStream();
-                    BinaryFormatter bi = new BinaryFormatter();
-                    bi.Serialize(stm, Message);
+                        BinaryFormatter bi = new BinaryFormatter();
+                        bi.Serialize(stm, Message);
+                    }
+                    catch { /*client left as the message was serialized*/ }
                 }
-                catch { /*client left as the message was serialized*/ }
-            }
-            else
-                Console.WriteLine("You are trying to send a message to a client who's not connected!");
+                else
+                    Console.WriteLine("You are trying to send a message to a client who's not connected!");
         }
 
         /// <summary>
@@ -348,7 +353,7 @@ namespace TgenNetProtocol
         /// <summary>
         /// Stops the listener then aborts all the connected client before it aborts the thread that listens to incoming clients
         /// </summary>
-        public void Close()
+        public override void Close()
         {
             if (active && listener != null)
             {
@@ -360,6 +365,11 @@ namespace TgenNetProtocol
             }
             else
                 Console.WriteLine("The listener is already closed!");
+        }
+
+        public void Dispose()
+        {
+            Close();
         }
     }
 }

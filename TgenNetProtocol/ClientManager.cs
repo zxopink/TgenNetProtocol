@@ -3,15 +3,21 @@ using System.Threading;
 using System.Net;
 using System.Net.Sockets;
 using System.Runtime.Serialization.Formatters.Binary;
+using System.Threading.Tasks;
+using System.IO;
+using System.Text;
 
 namespace TgenNetProtocol
 {
-    public class ClientManager
+    public class ClientManager : GeneralNetworkManager, IDisposable
     {
         private TcpClient tcpClient;
         private Thread MessageListener;
 
-        public event EventHandler OnConnect;
+        //public event EventHandler OnConnect;
+
+        public delegate void ClientActivity();
+        public event ClientActivity OnConnect;
 
         private bool active; // field
         /// <summary>
@@ -39,7 +45,8 @@ namespace TgenNetProtocol
                         return ip.ToString();
                     }
                 }
-                throw new Exception("No network adapters with an IPv4 address in the system!");
+                return "No network adapters with an IPv4 address in the system!";
+                //throw new Exception("No network adapters with an IPv4 address in the system!");
             }
         }
 
@@ -48,6 +55,7 @@ namespace TgenNetProtocol
         {
             tcpClient = new TcpClient(); //make an empty one that will be replaced for later
             active = false;
+            AttributeActions.CheckAvailableAssemblies();
         }
 
         public bool IsConnected()
@@ -76,7 +84,7 @@ namespace TgenNetProtocol
                 {
                     tcpClient = new TcpClient(); //makes a new TcpClient in case the client wants to use the same clientmanager and reuse it or reconnect
                     tcpClient.Connect(ip, port);
-                    CheckForStream();
+                    //CheckForStream();
 
                     tcpClient.NoDelay = true; //disables delay which occures when sending small chunks or data
                     tcpClient.Client.NoDelay = true; //disables delay which occures when sending small chunks or data
@@ -85,7 +93,64 @@ namespace TgenNetProtocol
                     MessageListener.Start();
                     attemptCounter = 0;
                     active = true;
+                    OnConnect?.Invoke();
                     return true;
+                }
+                catch (SocketException e)
+                {
+                    TgenLog.Log(e.ToString());
+
+                    if (!makeAttempts)
+                        return false;
+
+                    attemptCounter++;
+                    Console.WriteLine("Attempt number " + attemptCounter + " to connect the server");
+                    if (attemptCounter == maxAttemptCount)
+                    {
+                        attemptCounter = 0;
+                        Console.WriteLine("Was not able to connect the server after " + maxAttemptCount + " attempts");
+                        return false;
+                        //throw new Exception("Was not able to connect the server after " + maxAttemptCount + " attempts"); //a console print is enough
+                    }
+                    else
+                        Connect(ip, port);
+                }
+                return false;
+            }
+            else
+            {
+                Console.WriteLine("Client is already connected to a server!");
+                return true;
+            }
+        }
+
+        public async Task<bool> ConnectAsync(string ip, int port)
+        {
+            if (!active)
+            {
+                try
+                {
+                    tcpClient = new TcpClient(); //makes a new TcpClient in case the client wants to use the same clientmanager and reuse it or reconnect
+                    Task connectOperation = tcpClient.ConnectAsync(ip, port).ContinueWith((x) =>
+                    {
+                        if (x.IsFaulted)
+                            throw x.Exception.InnerException;
+
+                        //CheckForStream();
+                        MessageListener = new Thread(ListenToIncomingMessages);
+                        MessageListener.Start();
+                        attemptCounter = 0;
+                        OnConnect?.Invoke();
+                        active = true;
+                    });
+                    tcpClient.NoDelay = true; //disables delay which occures when sending small chunks or data
+                    tcpClient.Client.NoDelay = true; //disables delay which occures when sending small chunks or data
+                    await connectOperation; //wait for the connection part to finish
+
+                    if (!connectOperation.IsFaulted) //was an exception thrown?
+                        throw connectOperation.Exception.InnerException; //if so, throw the exception to go through the catch section
+
+                    return true; //could use connectOperation.IsCompleted but if it completed then the connection must be true
                 }
                 catch (SocketException)
                 {
@@ -102,7 +167,7 @@ namespace TgenNetProtocol
                         //throw new Exception("Was not able to connect the server after " + maxAttemptCount + " attempts"); //a console print is enough
                     }
                     else
-                        Connect(ip, port);
+                        await ConnectAsync(ip, port);
                 }
                 return false;
             }
@@ -128,21 +193,20 @@ namespace TgenNetProtocol
             }
             catch
             {
-                stm.Close();
-                stm.Dispose();
+                stm.Close(); //close is like dispose
                 tcpClient.Close();
                 throw new SocketException();
             }
         }
 
-        public void Close()
+        public override void Close()
         {
             tcpClient.Close();
             active = false;
             //MessageListener.Abort();
         }
 
-        public void Send(object message)
+        public new void Send(object message)
         {
             try
             {
@@ -170,6 +234,7 @@ namespace TgenNetProtocol
                 {
                     if (stm.DataAvailable)
                     {
+                        TgenLog.Log("Client: got a new packet");
                         BinaryFormatter bi = new BinaryFormatter();
                         object message = bi.Deserialize(stm);
                         //ClientNetworkReciverAttribute network = new ClientNetworkReciverAttribute();
@@ -177,16 +242,19 @@ namespace TgenNetProtocol
                         AttributeActions.SendNewClientMessage(message);
                     }
                 }
+                active = false;
             }
-            catch (ThreadAbortException)
+            catch (ThreadAbortException e)
             {
+                TgenLog.Log(e.ToString());
                 //this usually happens when the client closes the listener
                 //since the thread isn't in use so it aborts it
                 Close();
             }
 
-            catch (ObjectDisposedException)
+            catch (ObjectDisposedException e)
             {
+                TgenLog.Log(e.ToString());
                 //this usually happens when the client closes the ClientTcp
                 //the ClientTcp is disposed(null) so it can't get the connected property of it
                 Close();
@@ -194,9 +262,16 @@ namespace TgenNetProtocol
 
             catch (Exception e)
             {
+                TgenLog.Log(e.ToString());
                 Console.WriteLine("Error: " + e.GetType());
                 Close();
             }
+        }
+
+        public void Dispose()
+        {
+            Close();
+            //GC.SuppressFinalize(this);
         }
     }
 }

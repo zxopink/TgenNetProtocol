@@ -23,37 +23,42 @@ namespace TgenNetProtocol
     #endregion
     public class AttributeActions
     {
-        public volatile static List<object> networkObjects = new List<object>();
+        public volatile static List<object> networkObjects = new List<object>(); //list of active networkObjects
+        public volatile static List<object> networkObjectsToRemove = new List<object>(); //list of network objects to remove from the active networkObjects list
+        
 
         /// <summary>
         /// this bool let's other threads know if a message is being send
         /// the sending proccess takes time and cannot get changed at run-time (things might break)
         /// </summary>
-        //might need to remove the "volatile" keyword, check on that
         public volatile static bool isWorking = false;
 
-        private static List<Type> GetAllTypes()
+        private static bool windowsForms = false, unity = false;
+        /// <summary>
+        /// Executing an assembly that's not in the project will result in a fatal exception
+        /// </summary>
+        public static void CheckAvailableAssemblies()
         {
-            List<Type> allNetworkTypes = new List<Type>();
+            Assembly[] projectAssemblies = AppDomain.CurrentDomain.GetAssemblies();
 
-            List<string> allNetworkTypesStr = new List<string>();
-            allNetworkTypesStr.Add("TgenNetProtocol.NetworkBehavour");
-            allNetworkTypesStr.Add("TgenNetProtocol.FormNetworkBehavour");
-            allNetworkTypesStr.Add("TgenNetProtocol.MonoNetwork");
-
-            for (int i = 0; i < allNetworkTypesStr.Count; i++)
+            foreach (var assemblyInProject in projectAssemblies)
             {
-                try { allNetworkTypes.Add(Type.GetType(allNetworkTypesStr[i], true)); }
-                catch { /*Console.WriteLine("could not find " + allNetworkTypesStr[i], true); */ }
+                if (string.Equals(assemblyInProject.GetName().Name, "System.Windows.Forms"))
+                    windowsForms = true;
+
+                if (string.Equals(assemblyInProject.GetName().Name, "UnityEngine"))
+                    unity = true;
             }
-            return allNetworkTypes;
         }
+
         #region Server Get Message
         public static void SendNewServerMessage(object message, int clientId)
         {
             isWorking = true;
             List<object> objectsToSend = new List<object>();
             objectsToSend.Add(message);
+
+            List<object> nullObjectsToRemove = new List<object>();
             foreach (var networkObject in networkObjects)
             {
                 if (networkObject != null)
@@ -62,73 +67,69 @@ namespace TgenNetProtocol
 
                     // get method by name,  or loop through all methods
                     // looking for an attribute
-                    var methodsInfo = type.GetMethods().Where(x => x.GetCustomAttributes(typeof(ServerNetworkReciverAttribute), false).FirstOrDefault() != null);
+                    var methodsInfo = ((INetworkObject)networkObject).ServerMethods;
+                    //var methodsInfo = type.GetMethods().Where(x => x.GetCustomAttributes(typeof(ServerNetworkReciverAttribute), false).FirstOrDefault() != null);
                     //meaning the file doesn't exist in the project
                     //not a Windows project
 
                     //this part checks for form variables which cannot be touched from multiple threads
                     //so it handles multiple thread in forms
 
-                    //if (networkObject is FormNetworkBehavour)
-                    //if (networkObject.GetType().IsAssignableFrom(Type.GetType("TgenNetProtocol.FormNetworkBehavour")))
-                    if (networkObject.GetType().IsSubclassOf(Type.GetType("TgenNetProtocol.FormNetworkBehavour")))
+                    if (windowsForms)
                     {
                         FormHandlerServer(clientId, methodsInfo, message, networkObject, objectsToSend);
                     }
 
-                    /*
-                    else if (networkObject is MonoNetwork)
-                    //else if(networkObject.GetType().IsAssignableFrom(Type.GetType("TgenNetProtocol.MonoNetwork")))
+                    if (unity)
                     {
-                        foreach (var method in methodsInfo)
-                        {
-                            if (CheckMethodFirstParameterForServer(method) == message.GetType()
-                            || CheckMethodFirstParameterForServer(method) == typeof(object))
-                            {
-                                if (IsGetClientId(method))
-                                {
-                                    objectsToSend.Add(clientId);
-                                    var netObj = (MonoNetwork)networkObject;
-                                    netObj.InvokeSafely(method, objectsToSend.ToArray(), networkObject);
-                                    objectsToSend.Remove(clientId);
-                                }
-                                else
-                                {
-                                    var netObj = (MonoNetwork)networkObject;
-                                    netObj.InvokeSafely(method, objectsToSend.ToArray(), networkObject);
-                                }
-                            }
-                        }
+                        UnityHandlerServer(clientId, methodsInfo, message, networkObject, objectsToSend);
                     }
-                    */
 
                     //this is for normal situations (CMD (console) for example)
-                    //if(networkObject is NetworkBehavour)
                     else
                     {
                         foreach (var method in methodsInfo)
                         {
+                            TgenLog.Log("Server: Invoking method " + method);
                             if (CheckMethodFirstParameterForServer(method) == message.GetType()
                             || CheckMethodFirstParameterForServer(method) == typeof(object))
                             {
-                                if (IsGetClientId(method))
+                                try
                                 {
-                                    objectsToSend.Add(clientId);
-                                    method.Invoke(networkObject, objectsToSend.ToArray());
-                                    objectsToSend.Remove(clientId);
+                                    TgenLog.Log("Server: invoking method " + method.Name + " by client " + clientId);
+                                    if (IsGetClientId(method))
+                                    {
+                                        objectsToSend.Add(clientId);
+                                        method.Invoke(networkObject, objectsToSend.ToArray());
+                                        objectsToSend.Remove(clientId);
+                                    }
+                                    else
+                                    {
+                                        method.Invoke(networkObject, objectsToSend.ToArray());
+                                    }
                                 }
-                                else
+                                catch (Exception e)
                                 {
-                                    method.Invoke(networkObject, objectsToSend.ToArray());
+                                    TgenLog.Log("Server: Had issues invoking method " + method.Name);
+                                    TgenLog.Log(e.ToString());
                                 }
                             }
                         }
                     }
                 }
                 else
-                    networkObjects.Remove(networkObject);
+                    nullObjectsToRemove.Add(networkObject);
+                    
             }
+            foreach (var removeObj in networkObjectsToRemove) //remove disposed objects
+                networkObjects.Remove(removeObj);
+            networkObjectsToRemove.Clear();
+
             isWorking = false;
+
+            foreach (var nullObj in nullObjectsToRemove) //remove null objects (occurs with MonoNetwork when Monobehaviour.Destroy() is called)
+                networkObjects.Remove(nullObj);
+            nullObjectsToRemove.Clear();
         }
 
         /// <summary>
@@ -139,6 +140,9 @@ namespace TgenNetProtocol
         /// </summary>
         private static void FormHandlerServer(int clientId, IEnumerable<MethodInfo> methodsInfo, object message, object networkObject, List<object> objectsToSend)
         {
+            if (!(networkObject is FormNetworkBehavour))
+                return;
+
             foreach (var method in methodsInfo)
             {
                 if (CheckMethodFirstParameterForServer(method) == message.GetType()
@@ -160,16 +164,41 @@ namespace TgenNetProtocol
             }
         }
 
+        private static void UnityHandlerServer(int clientId, IEnumerable<MethodInfo> methodsInfo, object message, object networkObject, List<object> objectsToSend)
+        {
+            if (!(networkObject is MonoNetwork))
+                return;
+
+            foreach (var method in methodsInfo)
+            {
+                if (CheckMethodFirstParameterForServer(method) == message.GetType()
+                || CheckMethodFirstParameterForServer(method) == typeof(object))
+                {
+                    if (IsGetClientId(method))
+                    {
+                        objectsToSend.Add(clientId);
+                        var netObj = (MonoNetwork)networkObject;
+                        netObj.InvokeSafely(method, objectsToSend.ToArray(), networkObject);
+                        objectsToSend.Remove(clientId);
+                    }
+                    else
+                    {
+                        var netObj = (MonoNetwork)networkObject;
+                        netObj.InvokeSafely(method, objectsToSend.ToArray(), networkObject);
+                    }
+                }
+            }
+        }
+
         private static Type CheckMethodFirstParameterForServer(MethodInfo method) //ISSUE: throws an error when a client runs it, but works fine on both sides
         {
             var parameters = method.GetParameters().ToList();
-            //method.GetCustomAttributes(typeof(ServerNetworkReciverAttribute), false).FirstOrDefault().GetType()
             if (parameters.Count <= 2)//there must be one argument to the a client method
             {
                 return parameters[0].ParameterType;
             }
             else
-                throw new ArgumentOutOfRangeException("A network receive message is only allowed to get one parameter");
+                throw new ArgumentOutOfRangeException("A network receiver is only allowed to get one parameter");
         }
         /// <summary>
         /// Checks if the method wants the id of the client
@@ -185,7 +214,7 @@ namespace TgenNetProtocol
                 {
                     return true;
                 }
-                throw new ArgumentException("Expected an int type argument for the second argument to give the client id! The second argument must be type of int!");
+                throw new ArgumentException("Expected an int type argument for the second argument to give the client id! The second argument must be of type int!");
             }
             return false;
         }
@@ -197,78 +226,92 @@ namespace TgenNetProtocol
             isWorking = true;
             List<object> objectsToSend = new List<object>();
             objectsToSend.Add(message);
+
+            List<object> nullObjectsToRemove = new List<object>();
             foreach (var networkObject in networkObjects)
             {
                 if (networkObject != null)
                 {
                     Type type = networkObject.GetType();
-
                     // get method by name,  or loop through all methods
                     // looking for an attribute
-                    var methodsInfo = type.GetMethods().Where(x => x.GetCustomAttributes(typeof(ClientNetworkReciverAttribute), false).FirstOrDefault() != null);
+                    var methodsInfo = ((INetworkObject)networkObject).ClientMethods;
+                    //var methodsInfo = type.GetMethods().Where(x => x.GetCustomAttributes(typeof(ClientNetworkReciverAttribute), false).FirstOrDefault() != null);
 
                     //this part checks for form variables which cannot be touched from multiple threads
                     //so it handles multiple thread in forms
-
-                    //if (networkObject is FormNetworkBehavour)
-                    //if (networkObject.GetType().IsAssignableFrom(Type.GetType("TgenNetProtocol.FormNetworkBehavour")))
-                    if (networkObject.GetType().IsSubclassOf(Type.GetType("TgenNetProtocol.FormNetworkBehavour")))
+                    if (windowsForms)
                     {
                         FormHandlerClient(methodsInfo, message, networkObject, objectsToSend);
-                        /*
-                        foreach (var method in methodsInfo)
-                        {
-                            if (CheckMethodFirstParameterForClient(method) == message.GetType()
-                            || CheckMethodFirstParameterForClient(method) == typeof(object))
-                            {
-                                var netObj = (FormNetworkBehavour)networkObject;
-                                netObj.InvokeSafely(method, objectsToSend.ToArray(), networkObject);
-                            }
-                        }
-                        */
                     }
-                    /*
-                    else if (networkObject is MonoNetwork)
-                    //else if(networkObject.GetType().IsAssignableFrom(Type.GetType("TgenNetProtocol.MonoNetwork")))
+                    if (unity)
                     {
-                        Console.WriteLine("failed to detect the correct one");
-                        foreach (var method in methodsInfo)
-                        {
-                            if (CheckMethodFirstParameterForClient(method) == message.GetType()
-                            || CheckMethodFirstParameterForClient(method) == typeof(object))
-                            {
-                                var netObj = (MonoNetwork)networkObject;
-                                netObj.InvokeSafely(method, objectsToSend.ToArray(), networkObject);
-                            }
-                        }
+                        UnityHandlerClient(methodsInfo, message, networkObject, objectsToSend);
                     }
-                    */
                     //this is for normal situtations (CMD (console) for example)
-                    //if(networkObject is NetworkBehavour)
                     else
                     {
+                        TgenLog.Log("Client: passing on the object");
                         foreach (var method in methodsInfo)
                         {
                             if (CheckMethodFirstParameterForClient(method) == message.GetType()
                             || CheckMethodFirstParameterForClient(method) == typeof(object))
-                                method.Invoke(networkObject, objectsToSend.ToArray());
+                            {
+                                try
+                                {
+                                    TgenLog.Log("Client: invoking method " + method.Name);
+                                    method.Invoke(networkObject, objectsToSend.ToArray());
+                                }
+                                catch (Exception e)
+                                {
+                                    TgenLog.Log("Client: Had issues invoking method " + method.Name);
+                                    TgenLog.Log(e.ToString());
+                                }
+                            }
                         }
                     }
                 }
                 else
-                    networkObjects.Remove(networkObject);
+                    nullObjectsToRemove.Add(networkObject);
             }
+            foreach (var removeObj in networkObjectsToRemove) //remove disposed objects
+                networkObjects.Remove(removeObj);
+            networkObjectsToRemove.Clear();
+
             isWorking = false;
+
+            foreach (var nullObj in nullObjectsToRemove)
+                networkObjects.Remove(nullObj);
+            nullObjectsToRemove.Clear();
         }
 
         public static void FormHandlerClient(IEnumerable<MethodInfo> methodsInfo, object message, object networkObject, List<object> objectsToSend)
         {
+            if (!(networkObject is FormNetworkBehavour))
+                return;
+
             foreach (var method in methodsInfo)
             {
                 if (CheckMethodFirstParameterForClient(method) == message.GetType()
                 || CheckMethodFirstParameterForClient(method) == typeof(object))
                 {
                     var netObj = (FormNetworkBehavour)networkObject;
+                    netObj.InvokeSafely(method, objectsToSend.ToArray(), networkObject);
+                }
+            }
+        }
+
+        public static void UnityHandlerClient(IEnumerable<MethodInfo> methodsInfo, object message, object networkObject, List<object> objectsToSend)
+        {
+            if (!(networkObject is MonoNetwork))
+                return;
+
+            foreach (var method in methodsInfo)
+            {
+                if (CheckMethodFirstParameterForClient(method) == message.GetType()
+                || CheckMethodFirstParameterForClient(method) == typeof(object))
+                {
+                    var netObj = (MonoNetwork)networkObject;
                     netObj.InvokeSafely(method, objectsToSend.ToArray(), networkObject);
                 }
             }
