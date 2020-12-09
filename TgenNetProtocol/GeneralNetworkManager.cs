@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 
 namespace TgenNetProtocol
 {
+    /*
     public abstract class GeneralNetworkManager
     {
         public void Send(object message)
@@ -40,4 +41,5 @@ namespace TgenNetProtocol
             throw new Exception("The object isn't a client or a server");
         }
     }
+    */
 }

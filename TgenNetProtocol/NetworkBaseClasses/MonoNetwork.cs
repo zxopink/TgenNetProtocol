@@ -35,7 +35,7 @@ namespace TgenNetProtocol
         public MonoNetwork()
         {
             SetUpMethods();
-
+            
             Thread addToList = new Thread(AddToAttributes);
             addToList.Start();
         }
@@ -161,7 +161,7 @@ namespace TgenNetProtocol
             {
                 if (!AttributeActions.isWorking)
                 {
-                    AttributeActions.networkObjectsToRemove.Remove(this);
+                    AttributeActions.networkObjects.Remove(this);
                     isDone = true;
                 }
             }

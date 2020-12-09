@@ -24,8 +24,7 @@ namespace TgenNetProtocol
     public class AttributeActions
     {
         public volatile static List<object> networkObjects = new List<object>(); //list of active networkObjects
-        public volatile static List<object> networkObjectsToRemove = new List<object>(); //list of network objects to remove from the active networkObjects list
-        
+        //public volatile static List<object> networkObjectsToRemove = new List<object>(); //list of network objects to remove from the active networkObjects list
 
         /// <summary>
         /// this bool let's other threads know if a message is being send
@@ -90,13 +89,11 @@ namespace TgenNetProtocol
                     {
                         foreach (var method in methodsInfo)
                         {
-                            TgenLog.Log("Server: Invoking method " + method);
                             if (CheckMethodFirstParameterForServer(method) == message.GetType()
                             || CheckMethodFirstParameterForServer(method) == typeof(object))
                             {
                                 try
                                 {
-                                    TgenLog.Log("Server: invoking method " + method.Name + " by client " + clientId);
                                     if (IsGetClientId(method))
                                     {
                                         objectsToSend.Add(clientId);
@@ -121,10 +118,10 @@ namespace TgenNetProtocol
                     nullObjectsToRemove.Add(networkObject);
                     
             }
-            foreach (var removeObj in networkObjectsToRemove) //remove disposed objects
-                networkObjects.Remove(removeObj);
-            networkObjectsToRemove.Clear();
-
+            //foreach (var removeObj in networkObjectsToRemove) //remove disposed objects
+            //    networkObjects.Remove(removeObj);
+            //networkObjectsToRemove.Clear();
+            
             isWorking = false;
 
             foreach (var nullObj in nullObjectsToRemove) //remove null objects (occurs with MonoNetwork when Monobehaviour.Destroy() is called)
@@ -251,7 +248,6 @@ namespace TgenNetProtocol
                     //this is for normal situtations (CMD (console) for example)
                     else
                     {
-                        TgenLog.Log("Client: passing on the object");
                         foreach (var method in methodsInfo)
                         {
                             if (CheckMethodFirstParameterForClient(method) == message.GetType()
@@ -259,7 +255,6 @@ namespace TgenNetProtocol
                             {
                                 try
                                 {
-                                    TgenLog.Log("Client: invoking method " + method.Name);
                                     method.Invoke(networkObject, objectsToSend.ToArray());
                                 }
                                 catch (Exception e)
@@ -274,9 +269,9 @@ namespace TgenNetProtocol
                 else
                     nullObjectsToRemove.Add(networkObject);
             }
-            foreach (var removeObj in networkObjectsToRemove) //remove disposed objects
-                networkObjects.Remove(removeObj);
-            networkObjectsToRemove.Clear();
+            //foreach (var removeObj in networkObjectsToRemove) //remove disposed objects
+            //    networkObjects.Remove(removeObj);
+            //networkObjectsToRemove.Clear();
 
             isWorking = false;
 

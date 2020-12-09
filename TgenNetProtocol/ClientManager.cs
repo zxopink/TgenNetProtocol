@@ -9,7 +9,7 @@ using System.Text;
 
 namespace TgenNetProtocol
 {
-    public class ClientManager : GeneralNetworkManager, IDisposable
+    public class ClientManager : IDisposable
     {
         private TcpClient tcpClient;
         private Thread MessageListener;
@@ -199,14 +199,14 @@ namespace TgenNetProtocol
             }
         }
 
-        public override void Close()
+        public void Close()
         {
             tcpClient.Close();
             active = false;
             //MessageListener.Abort();
         }
 
-        public new void Send(object message)
+        public void Send(object message)
         {
             try
             {
@@ -234,7 +234,6 @@ namespace TgenNetProtocol
                 {
                     if (stm.DataAvailable)
                     {
-                        TgenLog.Log("Client: got a new packet");
                         BinaryFormatter bi = new BinaryFormatter();
                         object message = bi.Deserialize(stm);
                         //ClientNetworkReciverAttribute network = new ClientNetworkReciverAttribute();

@@ -21,7 +21,7 @@ namespace TgenNetProtocol
         public bool activeClient;
         public int id;
     }
-    public class ServerManager : GeneralNetworkManager, IDisposable
+    public class ServerManager : IDisposable
     {
         private Thread clientListenerThread;
         public delegate void MessageSent(object message);
@@ -154,7 +154,6 @@ namespace TgenNetProtocol
                 {
                     BinaryFormatter bi = new BinaryFormatter();
                     object message = bi.Deserialize(stm);
-                    TgenLog.Log("got message from client " + clientData.id);
                     //ServerCommunication.Program.MessageRecived(message, user);
                     //ServerNetworkReciverAttribute callAll = new ServerNetworkReciverAttribute();
                     //callAll.SendNewMessage(message);
@@ -353,7 +352,7 @@ namespace TgenNetProtocol
         /// <summary>
         /// Stops the listener then aborts all the connected client before it aborts the thread that listens to incoming clients
         /// </summary>
-        public override void Close()
+        public void Close()
         {
             if (active && listener != null)
             {

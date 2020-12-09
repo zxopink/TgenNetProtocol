@@ -68,7 +68,7 @@ namespace TgenNetProtocol
             {
                 if (!AttributeActions.isWorking)
                 {
-                    AttributeActions.networkObjectsToRemove.Remove(this);
+                    AttributeActions.networkObjects.Remove(this);
                     isDone = true;
                 }
             }
