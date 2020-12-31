@@ -6,6 +6,7 @@ using System.Runtime.Serialization.Formatters.Binary;
 using System.Threading.Tasks;
 using System.IO;
 using System.Text;
+using TgenSerializer;
 
 namespace TgenNetProtocol
 {
@@ -15,7 +16,6 @@ namespace TgenNetProtocol
         private Thread MessageListener;
 
         //public event EventHandler OnConnect;
-
         public delegate void ClientActivity();
         public event ClientActivity OnConnect;
 
@@ -30,7 +30,7 @@ namespace TgenNetProtocol
 
         public string PublicIp
         {
-            get { return new WebClient().DownloadString("http://icanhazip.com"); }
+            get { try { return new WebClient().DownloadString("http://icanhazip.com"); } catch (Exception) { return "Unable to load public IP"; } }
         }
 
         public string LocalIp
@@ -213,15 +213,18 @@ namespace TgenNetProtocol
                 if (tcpClient.Connected)
                 {
                     NetworkStream stm = tcpClient.GetStream();
-                    BinaryFormatter bi = new BinaryFormatter();
-                    bi.Serialize(stm, message);
+                    //BinaryFormatter bi = new BinaryFormatter();
+                    //bi.Serialize(stm, message);
+                    TgenFormatter.Serialize(stm, message);
                 }
                 else
                     Console.WriteLine("The client isn't connected to a server!");
             }
-            catch //Usually gets thrown when the server aborted/kicked the client
+            catch (Exception e) //Usually gets thrown when the server aborted/kicked the client
             {
                 Close();
+                TgenLog.Log(e.ToString());
+                throw e;
             }
         }
 
@@ -234,8 +237,10 @@ namespace TgenNetProtocol
                 {
                     if (stm.DataAvailable)
                     {
-                        BinaryFormatter bi = new BinaryFormatter();
-                        object message = bi.Deserialize(stm);
+                        //BinaryFormatter bi = new BinaryFormatter();
+                        //object message = bi.Deserialize(stm);
+
+                        object message = TgenFormatter.Deserialize(stm);
                         //ClientNetworkReciverAttribute network = new ClientNetworkReciverAttribute();
                         //network.SendNewMessage(Message);
                         AttributeActions.SendNewClientMessage(message);
@@ -245,25 +250,27 @@ namespace TgenNetProtocol
             }
             catch (ThreadAbortException e)
             {
-                TgenLog.Log(e.ToString());
                 //this usually happens when the client closes the listener
                 //since the thread isn't in use so it aborts it
                 Close();
+                TgenLog.Log(e.ToString());
+                throw e;
             }
 
             catch (ObjectDisposedException e)
             {
-                TgenLog.Log(e.ToString());
                 //this usually happens when the client closes the ClientTcp
                 //the ClientTcp is disposed(null) so it can't get the connected property of it
                 Close();
+                TgenLog.Log(e.ToString());
+                throw e;
             }
 
             catch (Exception e)
             {
                 TgenLog.Log(e.ToString());
-                Console.WriteLine("Error: " + e.GetType());
                 Close();
+                throw e;
             }
         }
 

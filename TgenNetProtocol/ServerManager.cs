@@ -7,6 +7,8 @@ using System.Runtime.CompilerServices;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Net;
+using TgenSerializer;
+using System.IO;
 
 namespace TgenNetProtocol
 {
@@ -148,26 +150,29 @@ namespace TgenNetProtocol
             ClientData clientData = (ClientData)newC;
             TcpClient clientTcp = clientData.clientTcp;
             NetworkStream stm = clientTcp.GetStream();
-            try
-            {
+            //try
+            //{
                 while (clientTcp.Connected && clientData.activeClient)
                 {
-                    BinaryFormatter bi = new BinaryFormatter();
-                    object message = bi.Deserialize(stm);
+                    //Console.WriteLine("Got Message");
+                    //BinaryFormatter bi = new BinaryFormatter();
+                    //object message = bi.Deserialize(stm);
+
+                    object message = TgenFormatter.Deserialize(stm);
                     //ServerCommunication.Program.MessageRecived(message, user);
                     //ServerNetworkReciverAttribute callAll = new ServerNetworkReciverAttribute();
                     //callAll.SendNewMessage(message);
                     AttributeActions.SendNewServerMessage(message, clientData.id);
                 }
-            }
+            //}
             //the program WILL crash when client server
             //the catch makes sure to handle the program properly when a client leaves
-            catch (Exception e)
-            {
-                TgenLog.Log(e.ToString());
+            //catch (Exception e)
+            //{
+            //    TgenLog.Log(e.ToString());
                 //Console.WriteLine("Error: " + e);
                 //Console.WriteLine(clientData.id + " has disconnected");
-            }
+            //}
             stm.Close(); //close is disposed
             AbortClient(clientData.id);
         }
@@ -228,27 +233,27 @@ namespace TgenNetProtocol
         /// </summary>
         /// <param name="Message">The message you want to send</param>
         /// <param name="client">The id of the client who's supposed to get the message</param>
-        public void Send(object Message, int client)
+        public void Send(object Message, int client = 0)
         {
-                TcpClient clientTcp = clients[client].clientTcp;
-                Thread clientThread = threadList[client];
-                if (clientTcp.Connected && clientThread != null)
+            TcpClient clientTcp = clients[client].clientTcp;
+            Thread clientThread = threadList[client];
+            if (clientTcp.Connected && clientThread != null)
+            {
+                try
                 {
-                    try
-                    {
                     NetworkStream stm = clientTcp.GetStream();
-                        BinaryFormatter bi = new BinaryFormatter();
-                        bi.Serialize(stm, Message);
-                    }
-                    catch { /*client left as the message was serialized*/ }
+                    //BinaryFormatter bi = new BinaryFormatter();
+                    //bi.Serialize(stm, Message);
+                    TgenFormatter.Serialize(stm, Message);
                 }
-                else
-                    Console.WriteLine("You are trying to send a message to a client who's not connected!");
+                catch { /*client left as the message was serialized*/ }
+            }
+            else
+                Console.WriteLine("You are trying to send a message to a client who's not connected!");
         }
 
         /// <summary>
         /// Sends a message to all connected client,
-        /// common feature among chats
         /// </summary>
         /// <param name="Message">The message you want to send</param>
         public void SendToAll(object Message)
@@ -257,18 +262,8 @@ namespace TgenNetProtocol
             {
                 for (int i = 0; i < clients.Count; i++)
                 {
-                    TcpClient clientTcp = clients[i].clientTcp;
-                    Thread clientThread = threadList[i];
-                    if (clientTcp.Connected && clientThread != null)
-                    {
-                        try
-                        {
-                            NetworkStream stm = clientTcp.GetStream();
-                            BinaryFormatter bi = new BinaryFormatter();
-                            bi.Serialize(stm, Message);
-                        }
-                        catch { /*client left as the message was serialized*/ }
-                    }
+                    if (clients[i].clientTcp.Connected)
+                        Send(Message, i);
                 }
             }
             else
@@ -276,7 +271,8 @@ namespace TgenNetProtocol
         }
 
         /// <summary>
-        /// Sends a message to all connected clients except for the client
+        /// Sends a message to all connected clients except for the client,
+        /// common feature among chats
         /// </summary>
         /// <param name="Message">The message</param>
         /// <param name="client">The client that won't get the message</param>
@@ -288,18 +284,8 @@ namespace TgenNetProtocol
                 {
                     if (i != client)
                     {
-                        TcpClient clientTcp = clients[i].clientTcp;
-                        Thread clientThread = threadList[i];
-                        if (clientTcp.Connected && clientThread != null)
-                        {
-                            try
-                            {
-                                NetworkStream stm = clientTcp.GetStream();
-                                BinaryFormatter bi = new BinaryFormatter();
-                                bi.Serialize(stm, Message);
-                            }
-                            catch { /*client left as the message was serialized*/ }
-                        }
+                        if (clients[i].clientTcp.Connected)
+                            Send(Message, i);
                     }
                 }
             }

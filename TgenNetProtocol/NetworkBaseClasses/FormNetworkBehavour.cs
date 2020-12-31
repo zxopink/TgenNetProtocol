@@ -93,6 +93,7 @@ namespace TgenNetProtocol
         {
             if (!method.IsStatic)
             {
+                Console.WriteLine("SAFE INVOKE YO");
                 var tArgs = new List<Type>();
                 foreach (var param in method.GetParameters())
                     tArgs.Add(param.ParameterType);
