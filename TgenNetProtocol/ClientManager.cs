@@ -78,104 +78,99 @@ namespace TgenNetProtocol
         /// <returns>if connected successfully returns true, else false</returns>
         public bool Connect(string ip, int port)
         {
-            if (!active)
+            if (active)
             {
-                try
-                {
-                    tcpClient = new TcpClient(); //makes a new TcpClient in case the client wants to use the same clientmanager and reuse it or reconnect
-                    tcpClient.Connect(ip, port);
-                    //CheckForStream();
-
-                    tcpClient.NoDelay = true; //disables delay which occures when sending small chunks or data
-                    tcpClient.Client.NoDelay = true; //disables delay which occures when sending small chunks or data
-
-                    MessageListener = new Thread(ListenToIncomingMessages);
-                    MessageListener.Start();
-                    attemptCounter = 0;
-                    active = true;
-                    OnConnect?.Invoke();
-                    return true;
-                }
-                catch (SocketException e)
-                {
-                    TgenLog.Log(e.ToString());
-
-                    if (!makeAttempts)
-                        return false;
-
-                    attemptCounter++;
-                    Console.WriteLine("Attempt number " + attemptCounter + " to connect the server");
-                    if (attemptCounter == maxAttemptCount)
-                    {
-                        attemptCounter = 0;
-                        Console.WriteLine("Was not able to connect the server after " + maxAttemptCount + " attempts");
-                        return false;
-                        //throw new Exception("Was not able to connect the server after " + maxAttemptCount + " attempts"); //a console print is enough
-                    }
-                    else
-                        Connect(ip, port);
-                }
-                return false;
-            }
-            else
-            {
-                Console.WriteLine("Client is already connected to a server!");
+                TgenLog.Log("Client is already connected to a server!");
                 return true;
             }
+
+            try
+            {
+                tcpClient = new TcpClient(); //makes a new TcpClient in case the client wants to use the same clientmanager and reuse it or reconnect
+                tcpClient.Connect(ip, port);
+                //CheckForStream();
+
+                tcpClient.NoDelay = true; //disables delay which occures when sending small chunks or data
+                tcpClient.Client.NoDelay = true; //disables delay which occures when sending small chunks or data
+
+                MessageListener = new Thread(ListenToIncomingMessages);
+                MessageListener.Start();
+                attemptCounter = 0;
+                active = true;
+                OnConnect?.Invoke();
+                return true;
+            }
+            catch (SocketException e)
+            {
+                TgenLog.Log(e.ToString());
+
+                if (!makeAttempts)
+                    return false;
+
+                attemptCounter++;
+                Console.WriteLine("Attempt number " + attemptCounter + " to connect the server");
+                if (attemptCounter == maxAttemptCount)
+                {
+                    attemptCounter = 0;
+                    Console.WriteLine("Was not able to connect the server after " + maxAttemptCount + " attempts");
+                    return false;
+                    //throw new Exception("Was not able to connect the server after " + maxAttemptCount + " attempts"); //a console print is enough
+                }
+                else
+                    Connect(ip, port);
+            }
+            return false;
         }
 
         public async Task<bool> ConnectAsync(string ip, int port)
         {
-            if (!active)
+            if (active)
             {
-                try
+                TgenLog.Log("Client is already connected to a server!");
+                return true;
+            }
+            try
+            {
+                tcpClient = new TcpClient(); //makes a new TcpClient in case the client wants to use the same clientmanager and reuse it or reconnect
+                Task connectOperation = tcpClient.ConnectAsync(ip, port).ContinueWith((x) =>
                 {
-                    tcpClient = new TcpClient(); //makes a new TcpClient in case the client wants to use the same clientmanager and reuse it or reconnect
-                    Task connectOperation = tcpClient.ConnectAsync(ip, port).ContinueWith((x) =>
-                    {
-                        if (x.IsFaulted)
-                            throw x.Exception.InnerException;
+                    if (x.IsFaulted)
+                        throw x.Exception.InnerException;
 
                         //CheckForStream();
                         MessageListener = new Thread(ListenToIncomingMessages);
-                        MessageListener.Start();
-                        attemptCounter = 0;
-                        OnConnect?.Invoke();
-                        active = true;
-                    });
-                    tcpClient.NoDelay = true; //disables delay which occures when sending small chunks or data
-                    tcpClient.Client.NoDelay = true; //disables delay which occures when sending small chunks or data
-                    await connectOperation; //wait for the connection part to finish
+                    MessageListener.Start();
+                    attemptCounter = 0;
+                    OnConnect?.Invoke();
+                    active = true;
+                });
+                tcpClient.NoDelay = true; //disables delay which occures when sending small chunks or data
+                tcpClient.Client.NoDelay = true; //disables delay which occures when sending small chunks or data
+                await connectOperation; //wait for the connection part to finish
 
-                    if (!connectOperation.IsFaulted) //was an exception thrown?
-                        throw connectOperation.Exception.InnerException; //if so, throw the exception to go through the catch section
+                if (!connectOperation.IsFaulted) //was an exception thrown?
+                    throw connectOperation.Exception.InnerException; //if so, throw the exception to go through the catch section
 
-                    return true; //could use connectOperation.IsCompleted but if it completed then the connection must be true
-                }
-                catch (SocketException)
-                {
-                    if (!makeAttempts)
-                        return false;
-
-                    attemptCounter++;
-                    Console.WriteLine("Attempt number " + attemptCounter + " to connect the server");
-                    if (attemptCounter == maxAttemptCount)
-                    {
-                        attemptCounter = 0;
-                        Console.WriteLine("Was not able to connect the server after " + maxAttemptCount + " attempts");
-                        return false;
-                        //throw new Exception("Was not able to connect the server after " + maxAttemptCount + " attempts"); //a console print is enough
-                    }
-                    else
-                        await ConnectAsync(ip, port);
-                }
-                return false;
+                return true; //could use connectOperation.IsCompleted but if it completed then the connection must be true
             }
-            else
+            catch (SocketException)
             {
-                Console.WriteLine("Client is already connected to a server!");
-                return true;
+                if (!makeAttempts)
+                    return false;
+
+                attemptCounter++;
+                Console.WriteLine("Attempt number " + attemptCounter + " to connect the server");
+                if (attemptCounter == maxAttemptCount)
+                {
+                    attemptCounter = 0;
+                    Console.WriteLine("Was not able to connect the server after " + maxAttemptCount + " attempts");
+                    return false;
+                    //throw new Exception("Was not able to connect the server after " + maxAttemptCount + " attempts"); //a console print is enough
+                }
+                else
+                    await ConnectAsync(ip, port);
             }
+            return false;
         }
 
         private void CheckForStream()

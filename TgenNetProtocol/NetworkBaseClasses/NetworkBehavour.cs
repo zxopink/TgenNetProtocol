@@ -25,6 +25,10 @@ namespace TgenNetProtocol
         public IEnumerable<MethodInfo> ClientMethods { get => clientMethods; }
 
         public delegate void NetworkMethod();
+        /// <summary>
+        /// What's for?
+        /// </summary>
+        [Obsolete] //finish with current changes before you mess with this
         public static event NetworkMethod NetworkMethodEvent;
         public NetworkBehavour()
         {
@@ -108,6 +112,11 @@ namespace TgenNetProtocol
             {
                 TgenLog.Log("That's weird, a different thread has tried to invoke");
             }
+        }
+
+        public void InvokeNetworkMethods(MethodInfo method, object[] objetsToSend, object ObjectThatOwnsTheMethod)
+        {
+            method.Invoke(ObjectThatOwnsTheMethod, objetsToSend);
         }
     }
 }

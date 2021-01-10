@@ -23,7 +23,7 @@ namespace TgenNetProtocol
     #endregion
     public class AttributeActions
     {
-        public volatile static List<object> networkObjects = new List<object>(); //list of active networkObjects
+        public volatile static List<INetworkObject> networkObjects = new List<INetworkObject>(); //list of active networkObjects
         //public volatile static List<object> networkObjectsToRemove = new List<object>(); //list of network objects to remove from the active networkObjects list
 
         /// <summary>
@@ -57,7 +57,7 @@ namespace TgenNetProtocol
             List<object> objectsToSend = new List<object>();
             objectsToSend.Add(message);
 
-            List<object> nullObjectsToRemove = new List<object>();
+            List<INetworkObject> nullObjectsToRemove = new List<INetworkObject>();
             foreach (var networkObject in networkObjects)
             {
                 if (networkObject != null)
@@ -66,7 +66,7 @@ namespace TgenNetProtocol
 
                     // get method by name,  or loop through all methods
                     // looking for an attribute
-                    var methodsInfo = ((INetworkObject)networkObject).ServerMethods;
+                    var methodsInfo = networkObject.ServerMethods;
                     //var methodsInfo = type.GetMethods().Where(x => x.GetCustomAttributes(typeof(ServerNetworkReciverAttribute), false).FirstOrDefault() != null);
                     //meaning the file doesn't exist in the project
                     //not a Windows project
@@ -76,17 +76,21 @@ namespace TgenNetProtocol
 
                     if (windowsForms)
                     {
-                        FormHandlerServer(clientId, methodsInfo, message, networkObject, objectsToSend);
+                        //FormHandlerServer(clientId, methodsInfo, message, networkObject, objectsToSend);
+                        NetworkObjHandlerServer(clientId, methodsInfo, message, networkObject, objectsToSend);
                     }
 
                     if (unity)
                     {
-                        UnityHandlerServer(clientId, methodsInfo, message, networkObject, objectsToSend);
+                        //UnityHandlerServer(clientId, methodsInfo, message, networkObject, objectsToSend);
+                        NetworkObjHandlerServer(clientId, methodsInfo, message, networkObject, objectsToSend);
                     }
 
                     //this is for normal situations (CMD (console) for example)
                     else
                     {
+                        NetworkObjHandlerServer(clientId, methodsInfo, message, networkObject, objectsToSend);
+                        /*
                         foreach (var method in methodsInfo)
                         {
                             if (CheckMethodFirstParameterForServer(method) == message.GetType()
@@ -112,6 +116,7 @@ namespace TgenNetProtocol
                                 }
                             }
                         }
+                        */
                     }
                 }
                 else
@@ -135,7 +140,7 @@ namespace TgenNetProtocol
         /// if the code touches a method that includes a type that isn't in the assembly, so program will only call this method IF forms can be found in the proeject
         /// and if not, it will safely avoid it
         /// </summary>
-        private static void FormHandlerServer(int clientId, IEnumerable<MethodInfo> methodsInfo, object message, object networkObject, List<object> objectsToSend)
+        private static void FormHandlerServer(object clientId, IEnumerable<MethodInfo> methodsInfo, object message, object networkObject, List<object> objectsToSend)
         {
             if (!(networkObject is FormNetworkBehavour))
                 return;
@@ -161,7 +166,7 @@ namespace TgenNetProtocol
             }
         }
 
-        private static void UnityHandlerServer(int clientId, IEnumerable<MethodInfo> methodsInfo, object message, object networkObject, List<object> objectsToSend)
+        private static void UnityHandlerServer(object clientId, IEnumerable<MethodInfo> methodsInfo, object message, object networkObject, List<object> objectsToSend)
         {
             if (!(networkObject is MonoNetwork))
                 return;
@@ -182,6 +187,27 @@ namespace TgenNetProtocol
                     {
                         var netObj = (MonoNetwork)networkObject;
                         netObj.InvokeSafely(method, objectsToSend.ToArray(), networkObject);
+                    }
+                }
+            }
+        }
+
+        private static void NetworkObjHandlerServer(object clientId, IEnumerable<MethodInfo> methodsInfo, object message, INetworkObject networkObject, List<object> objectsToSend)
+        {
+            foreach (var method in methodsInfo)
+            {
+                if (CheckMethodFirstParameterForServer(method) == message.GetType()
+                || CheckMethodFirstParameterForServer(method) == typeof(object))
+                {
+                    if (IsGetClientId(method))
+                    {
+                        objectsToSend.Add(clientId);
+                        networkObject.InvokeNetworkMethods(method, objectsToSend.ToArray(), networkObject);
+                        objectsToSend.Remove(clientId);
+                    }
+                    else
+                    {
+                        networkObject.InvokeNetworkMethods(method, objectsToSend.ToArray(), networkObject);
                     }
                 }
             }
@@ -207,11 +233,11 @@ namespace TgenNetProtocol
             var parameters = method.GetParameters().ToList();
             if (parameters.Count >= 2)
             {
-                if (parameters[1].ParameterType == typeof(int))
+                if (parameters[1].ParameterType == typeof(int) || parameters[1].ParameterType == typeof(ClientData))
                 {
                     return true;
                 }
-                throw new ArgumentException("Expected an int type argument for the second argument to give the client id! The second argument must be of type int!");
+                throw new ArgumentException("Expected an int/ClientData type argument for the second argument! The second argument must be of type int or ClientData!");
             }
             return false;
         }
@@ -224,7 +250,7 @@ namespace TgenNetProtocol
             List<object> objectsToSend = new List<object>();
             objectsToSend.Add(message);
 
-            List<object> nullObjectsToRemove = new List<object>();
+            List<INetworkObject> nullObjectsToRemove = new List<INetworkObject>();
             foreach (var networkObject in networkObjects)
             {
                 if (networkObject != null)
@@ -232,22 +258,26 @@ namespace TgenNetProtocol
                     Type type = networkObject.GetType();
                     // get method by name,  or loop through all methods
                     // looking for an attribute
-                    var methodsInfo = ((INetworkObject)networkObject).ClientMethods;
+                    var methodsInfo = networkObject.ClientMethods;
                     //var methodsInfo = type.GetMethods().Where(x => x.GetCustomAttributes(typeof(ClientNetworkReciverAttribute), false).FirstOrDefault() != null);
 
                     //this part checks for form variables which cannot be touched from multiple threads
                     //so it handles multiple thread in forms
                     if (windowsForms)
                     {
-                        FormHandlerClient(methodsInfo, message, networkObject, objectsToSend);
+                        //FormHandlerClient(methodsInfo, message, networkObject, objectsToSend);
+                        NetworkObjHandlerClient(methodsInfo, message, networkObject, objectsToSend);
                     }
                     if (unity)
                     {
-                        UnityHandlerClient(methodsInfo, message, networkObject, objectsToSend);
+                        //UnityHandlerClient(methodsInfo, message, networkObject, objectsToSend);
+                        NetworkObjHandlerClient(methodsInfo, message, networkObject, objectsToSend);
                     }
                     //this is for normal situtations (CMD (console) for example)
                     else
                     {
+                        NetworkObjHandlerClient(methodsInfo, message, networkObject, objectsToSend);
+                        /*
                         foreach (var method in methodsInfo)
                         {
                             if (CheckMethodFirstParameterForClient(method) == message.GetType()
@@ -264,6 +294,7 @@ namespace TgenNetProtocol
                                 }
                             }
                         }
+                        */
                     }
                 }
                 else
@@ -280,7 +311,7 @@ namespace TgenNetProtocol
             nullObjectsToRemove.Clear();
         }
 
-        public static void FormHandlerClient(IEnumerable<MethodInfo> methodsInfo, object message, object networkObject, List<object> objectsToSend)
+        private static void FormHandlerClient(IEnumerable<MethodInfo> methodsInfo, object message, object networkObject, List<object> objectsToSend)
         {
             if (!(networkObject is FormNetworkBehavour))
                 return;
@@ -296,7 +327,7 @@ namespace TgenNetProtocol
             }
         }
 
-        public static void UnityHandlerClient(IEnumerable<MethodInfo> methodsInfo, object message, object networkObject, List<object> objectsToSend)
+        private static void UnityHandlerClient(IEnumerable<MethodInfo> methodsInfo, object message, object networkObject, List<object> objectsToSend)
         {
             if (!(networkObject is MonoNetwork))
                 return;
@@ -308,6 +339,18 @@ namespace TgenNetProtocol
                 {
                     var netObj = (MonoNetwork)networkObject;
                     netObj.InvokeSafely(method, objectsToSend.ToArray(), networkObject);
+                }
+            }
+        }
+
+        private static void NetworkObjHandlerClient(IEnumerable<MethodInfo> methodsInfo, object message, INetworkObject networkObject, List<object> objectsToSend)
+        {
+            foreach (var method in methodsInfo)
+            {
+                if (CheckMethodFirstParameterForClient(method) == message.GetType()
+                || CheckMethodFirstParameterForClient(method) == typeof(object))
+                {
+                    networkObject.InvokeNetworkMethods(method, objectsToSend.ToArray(), networkObject);
                 }
             }
         }

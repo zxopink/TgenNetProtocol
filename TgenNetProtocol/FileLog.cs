@@ -7,11 +7,14 @@ using System.Threading.Tasks;
 
 namespace TgenNetProtocol
 {
-    public class TgenLog
+    public static class TgenLog
     {
         const string fileName = "Tgen.Log.txt";
+        public static bool consolePrint;
         public static void Log(string log)
         {
+            if(consolePrint)
+                Console.WriteLine(log);
             try
             {
                 if (!File.Exists(fileName))
@@ -26,12 +29,18 @@ namespace TgenNetProtocol
             }
             catch (Exception)
             {
-                Console.WriteLine("An issue has occured with the log file");
+                if(consolePrint)
+                    Console.WriteLine("An issue has occured with the log file");
             }
+
         }
 
         public static void Log(string[] logs)
         {
+            if (consolePrint)
+                foreach (var log in logs)
+                    Console.WriteLine(log);
+
             try
             {
                 if (!File.Exists(fileName))
@@ -47,7 +56,8 @@ namespace TgenNetProtocol
             }
             catch (Exception)
             {
-                Console.WriteLine("An issue has occured with the log file");
+                if (consolePrint)
+                    Console.WriteLine("An issue has occured with the log file");
             }
         }
 

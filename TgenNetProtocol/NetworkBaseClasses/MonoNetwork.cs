@@ -47,6 +47,9 @@ namespace TgenNetProtocol
             clientMethods = type.GetMethods().Where(x => x.GetCustomAttributes(typeof(ClientNetworkReciverAttribute), false).FirstOrDefault() != null);
         }
 
+        /// <summary>
+        /// Being called each frame, syncs the game engine with function's invoking order
+        /// </summary>
         public void Update()
         {
             isInvokingMethods = true;
@@ -99,19 +102,7 @@ namespace TgenNetProtocol
             }
         }
 
-        private void WaitToChangeInvokeRemade(SafeMonoInvokeData data)
-        {
-            bool isDone = false;
-            while (!isDone)
-            {
-                if (!isInvokingMethods)
-                {
-                    waitingMethods.Add(data);
-                    isDone = true;
-                }
-            }
-        }
-
+        [Obsolete]
         /// <summary>
         /// will not work on static methods
         /// </summary>
@@ -119,6 +110,42 @@ namespace TgenNetProtocol
         /// <param name="objetsToSend">the arguments the Method takes</param>
         /// <param name="ObjectThatOwnsTheMethod">The object that 'owns' the method</param>
         public void InvokeSafely(MethodInfo method, object[] objetsToSend, object ObjectThatOwnsTheMethod)
+        {
+            if (!method.IsStatic)
+            {
+                var tArgs = new List<Type>();
+                foreach (var param in method.GetParameters())
+                    tArgs.Add(param.ParameterType);
+                tArgs.Add(method.ReturnType);
+                var delDecltype = Expression.GetDelegateType(tArgs.ToArray());
+                var del = Delegate.CreateDelegate(delDecltype, ObjectThatOwnsTheMethod, method);
+
+                //waitingMethods.Add(new SafeMonoInvokeData(method, ObjectThatOwnsTheMethod, objetsToSend));
+
+                //WaitToChangeInvokeRemade(new SafeMonoInvokeData(method, ObjectThatOwnsTheMethod, objetsToSend));
+
+                Thread addToList = new Thread(WaitToChangeInvokeList);
+                addToList.Start(new SafeMonoInvokeData(method, ObjectThatOwnsTheMethod, objetsToSend));
+            }
+            else
+            {
+                var tArgs = new List<Type>();
+                foreach (var param in method.GetParameters())
+                    tArgs.Add(param.ParameterType);
+                tArgs.Add(method.ReturnType);
+                var delDecltype = Expression.GetDelegateType(tArgs.ToArray());
+                var del = Delegate.CreateDelegate(delDecltype, method);
+
+                //waitingMethods.Add(new SafeMonoInvokeData(method, ObjectThatOwnsTheMethod, objetsToSend));
+
+                //WaitToChangeInvokeRemade(new SafeMonoInvokeData(method, ObjectThatOwnsTheMethod, objetsToSend));
+
+                Thread addToList = new Thread(WaitToChangeInvokeList);
+                addToList.Start(new SafeMonoInvokeData(method, ObjectThatOwnsTheMethod, objetsToSend));
+            }
+        }
+
+        public void InvokeNetworkMethods(MethodInfo method, object[] objetsToSend, object ObjectThatOwnsTheMethod)
         {
             if (!method.IsStatic)
             {

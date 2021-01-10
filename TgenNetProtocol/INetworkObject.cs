@@ -7,12 +7,14 @@ using System.Threading.Tasks;
 
 namespace TgenNetProtocol
 {
-    interface INetworkObject : IDisposable
+    public interface INetworkObject : IDisposable
     {
         IEnumerable<MethodInfo> ServerMethods { get; }
         IEnumerable<MethodInfo> ClientMethods { get; }
 
         void SetUpMethods();
+
+        void InvokeNetworkMethods(MethodInfo method, object[] objetsToSend, object ObjectThatOwnsTheMethod);
 
         new void Dispose();
     }

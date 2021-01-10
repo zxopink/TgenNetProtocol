@@ -83,6 +83,7 @@ namespace TgenNetProtocol
 
         }
 
+        [Obsolete]
         /// <summary>
         /// will not work on static methods
         /// </summary>
@@ -93,7 +94,30 @@ namespace TgenNetProtocol
         {
             if (!method.IsStatic)
             {
-                Console.WriteLine("SAFE INVOKE YO");
+                var tArgs = new List<Type>();
+                foreach (var param in method.GetParameters())
+                    tArgs.Add(param.ParameterType);
+                tArgs.Add(method.ReturnType);
+                var delDecltype = Expression.GetDelegateType(tArgs.ToArray());
+                var del = Delegate.CreateDelegate(delDecltype, ObjectThatOwnsTheMethod, method);
+                Invoke(del, objetsToSend);
+            }
+            else
+            {
+                var tArgs = new List<Type>();
+                foreach (var param in method.GetParameters())
+                    tArgs.Add(param.ParameterType);
+                tArgs.Add(method.ReturnType);
+                var delDecltype = Expression.GetDelegateType(tArgs.ToArray());
+                var del = Delegate.CreateDelegate(delDecltype, method);
+                Invoke(del, objetsToSend);
+            }
+        }
+
+        public void InvokeNetworkMethods(MethodInfo method, object[] objetsToSend, object ObjectThatOwnsTheMethod)
+        {
+            if (!method.IsStatic)
+            {
                 var tArgs = new List<Type>();
                 foreach (var param in method.GetParameters())
                     tArgs.Add(param.ParameterType);
