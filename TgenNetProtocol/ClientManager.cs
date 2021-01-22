@@ -18,6 +18,10 @@ namespace TgenNetProtocol
         //public event EventHandler OnConnect;
         public delegate void ClientActivity();
         public event ClientActivity OnConnect;
+        /// <summary>
+        /// On connection aborted
+        /// </summary>
+        public event ClientActivity OnDisconnect;
 
         private bool active; // field
         /// <summary>
@@ -55,7 +59,6 @@ namespace TgenNetProtocol
         {
             tcpClient = new TcpClient(); //make an empty one that will be replaced for later
             active = false;
-            AttributeActions.CheckAvailableAssemblies();
         }
 
         public bool IsConnected()
@@ -241,15 +244,17 @@ namespace TgenNetProtocol
                         AttributeActions.SendNewClientMessage(message);
                     }
                 }
-                active = false;
+                Close();
+                OnDisconnect?.Invoke();
             }
             catch (ThreadAbortException e)
             {
                 //this usually happens when the client closes the listener
                 //since the thread isn't in use so it aborts it
                 Close();
-                TgenLog.Log(e.ToString());
-                throw e;
+                //TgenLog.Log(e.ToString());
+                OnDisconnect?.Invoke();
+                //throw e;
             }
 
             catch (ObjectDisposedException e)
@@ -257,15 +262,17 @@ namespace TgenNetProtocol
                 //this usually happens when the client closes the ClientTcp
                 //the ClientTcp is disposed(null) so it can't get the connected property of it
                 Close();
-                TgenLog.Log(e.ToString());
-                throw e;
+                //TgenLog.Log(e.ToString());
+                OnDisconnect?.Invoke();
+                //throw e;
             }
 
             catch (Exception e)
             {
-                TgenLog.Log(e.ToString());
+                //TgenLog.Log(e.ToString());
                 Close();
-                throw e;
+                OnDisconnect?.Invoke();
+                //throw e;
             }
         }
 

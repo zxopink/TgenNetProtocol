@@ -16,6 +16,10 @@ namespace TgenNetProtocol
 
         void InvokeNetworkMethods(MethodInfo method, object[] objetsToSend, object ObjectThatOwnsTheMethod);
 
+        /// <summary>
+        /// Dispose stops the broadcast for this object
+        /// this object won't recive any of the incoming packets and it's methods won't be invoked
+        /// </summary>
         new void Dispose();
     }
 }

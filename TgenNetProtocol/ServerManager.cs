@@ -23,7 +23,6 @@ namespace TgenNetProtocol
         public Thread clientReceiveThread;
         public TcpClient clientTcp;
         public bool activeClient;
-        [Obsolete]
         public int id;
 
         public override string ToString() => id.ToString();
@@ -46,7 +45,7 @@ namespace TgenNetProtocol
 
         //private bool listen = false; //made to control the listening thread
 
-        public ServerManager(int port) {this.port = port; AttributeActions.CheckAvailableAssemblies(); }
+        public ServerManager(int port) {this.port = port; }
 
         private bool active; // field
         public bool Active   // property
@@ -195,11 +194,10 @@ namespace TgenNetProtocol
             ClientData clientData = (ClientData)newC;
             TcpClient clientTcp = clientData.clientTcp;
             NetworkStream stm = clientTcp.GetStream();
-            //try
-            //{
-                while (clientTcp.Connected && clientData.activeClient)
+            try
+            {
+                while (clientData.activeClient)
                 {
-                    //Console.WriteLine("Got Message");
                     //BinaryFormatter bi = new BinaryFormatter();
                     //object message = bi.Deserialize(stm);
 
@@ -207,43 +205,23 @@ namespace TgenNetProtocol
                     //ServerCommunication.Program.MessageRecived(message, user);
                     //ServerNetworkReciverAttribute callAll = new ServerNetworkReciverAttribute();
                     //callAll.SendNewMessage(message);
-                    AttributeActions.SendNewServerMessage(message, clientData.id);
+                    AttributeActions.SendNewServerMessage(message, clientData);
                 }
-            //}
+            }
             //the program WILL crash when client server
             //the catch makes sure to handle the program properly when a client leaves
-            //catch (Exception e)
-            //{
-            //    TgenLog.Log(e.ToString());
-                //Console.WriteLine("Error: " + e);
-                //Console.WriteLine(clientData.id + " has disconnected");
-            //}
+            catch
+            {
+                TgenLog.Log(clientData.id + " has disconnected");
+            }
             stm.Close(); //close is disposed
             DropClient(clientData);
         }
 
-        [Obsolete]
         /// <summary>
         /// Is called to disconnect a client from the server (Close communications)
         /// </summary>
         /// <param name="client">The id of the client</param>
-        private void AbortClient(int client)
-        {
-            ClientData data = clients[client];
-            Thread deadClientThread = data.clientReceiveThread;
-            TcpClient tcpClient = data.clientTcp;
-            if (deadClientThread != null && tcpClient != null)
-            {
-                ClientDisconnectedEvent?.Invoke(data);
-                //MessageSentEvent -= (ServerCommunication.MessageSent)MessageBackMethod;
-                //it doesn't remove from the list because removing from the list makes the capacity smaller
-                //so clients who their id is bigger than the capacity will crash the program
-                clients[client] = null;
-                tcpClient.Close();
-                data.activeClient = false;
-            }
-        }
-
         private void AbortClient(ClientData client)
         {
             if (client == null)
@@ -251,53 +229,31 @@ namespace TgenNetProtocol
 
             Thread deadClientThread = client.clientReceiveThread;
             TcpClient tcpClient = client.clientTcp;
-            if (deadClientThread != null && tcpClient != null)
+            if (client.activeClient)
             {
                 ClientDisconnectedEvent?.Invoke(client);
-                //MessageSentEvent -= (ServerCommunication.MessageSent)MessageBackMethod;
                 //it doesn't remove from the list because removing from the list makes the capacity smaller
                 //so clients who their id is bigger than the capacity will crash the program
-                clients[client.id] = null;
-                //clients.Remove(client);
                 tcpClient.Close();
                 client.activeClient = false;
             }
         }
 
-        [Obsolete]
         /// <summary>
         /// The Server uses this function to drop inactive clients
         /// (Clients that disconnected/had a socket error)
         /// </summary>
         /// <param name="client"></param>
-        private void DropClient(int client)
-        {
-            TgenLog.Log("Aborting client: " + client);
-            AbortClient(client);
-        }
         private void DropClient(ClientData client)
         {
             TgenLog.Log("Aborting client: " + client);
             AbortClient(client);
         }
 
-        [Obsolete]
         /// <summary>
         /// Stop and drop communications with a client
         /// </summary>
         /// <param name="client"></param>
-        public void KickClient(int client)
-        {
-            ClientData data = clients[client];
-            if (client < clients.Count)
-            {
-                AbortClient(client);
-                TgenLog.Log("Kicking client: " + client);
-
-            }
-            else
-                TgenLog.Log("The client you tried to kick isn't in the list!");
-        }
         public void KickClient(ClientData client)
         {
             if (client.activeClient)
@@ -315,12 +271,12 @@ namespace TgenNetProtocol
         /// </summary>
         /// <param name="Message">The message you want to send</param>
         /// <param name="client">The id of the client who's supposed to get the message</param>
-        public void Send(object Message, int client = 0, bool throwOnError = false)
+        /// <param name="throwOnError">Throw exception on failed send</param>
+        public void Send(object Message, ClientData client, bool throwOnError = false)
         {
-            ClientData data = clients[client];
-            TcpClient clientTcp = data.clientTcp;
-            Thread clientThread = data.clientReceiveThread;
-            if (clientTcp.Connected && clientThread != null)
+            TcpClient clientTcp = client.clientTcp;
+            Thread clientThread = client.clientReceiveThread;
+            if (client.activeClient)
             {
                 try
                 {
@@ -333,44 +289,44 @@ namespace TgenNetProtocol
             }
             else
                 TgenLog.Log("You are trying to send a message to a client who's not connected!"); //Not really an error
-                //throw new Exception("You are trying to send a message to a client who's not connected!");
+                                                                                                  //throw new Exception("You are trying to send a message to a client who's not connected!");
         }
 
         /// <summary>
         /// Sends a message to all connected client,
         /// </summary>
         /// <param name="Message">The message you want to send</param>
+        /// <param name="throwOnError">Throw exception on failed send</param>
         public void SendToAll(object Message, bool throwOnError = false)
         {
             if (clients.Count >= 0)
             {
-                for (int i = 0; i < clients.Count; i++)
+                foreach (var client in clients)
                 {
-                    if (clients[i].clientTcp.Connected)
-                        Send(Message, i, throwOnError);
+                    if (client.activeClient)
+                        Send(Message, client, throwOnError);
                 }
             }
             else
                 TgenLog.Log("No clients are connected!");
         }
 
+        [Obsolete]
         /// <summary>
         /// Sends a message to all connected clients except for the client,
         /// common feature among chats
         /// </summary>
         /// <param name="Message">The message</param>
         /// <param name="client">The client that won't get the message</param>
-        public void SendToAllExcept(object Message, int client, bool throwOnError = false)
+        /// /// <param name="throwOnError">Throw exception on failed send</param>
+        public void SendToAllExcept(object Message, ClientData client, bool throwOnError = false)
         {
             if (clients.Count >= 0)
             {
-                for (int i = 0; i < clients.Count; i++)
+                foreach (var currentClient in clients)
                 {
-                    if (i != client)
-                    {
-                        if (clients[i].clientTcp.Connected)
-                            Send(Message, i, throwOnError);
-                    }
+                    if (currentClient != client && currentClient.activeClient)
+                        Send(Message, currentClient, throwOnError);
                 }
             }
             else

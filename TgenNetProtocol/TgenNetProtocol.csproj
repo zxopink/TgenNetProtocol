@@ -23,6 +23,9 @@
     <DefineConstants>DEBUG;TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
+    <DocumentationFile>bin\Debug\TgenNetProtocol.xml</DocumentationFile>
+    <RegisterForComInterop>false</RegisterForComInterop>
+    <NoWarn>1591;</NoWarn>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <PlatformTarget>AnyCPU</PlatformTarget>
@@ -75,6 +78,7 @@
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="ServerManager.cs" />
     <Compile Include="TgenTools\TgenTools.cs" />
+    <Compile Include="TypeSetterServer.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />

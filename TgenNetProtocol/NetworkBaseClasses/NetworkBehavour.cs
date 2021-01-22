@@ -78,10 +78,6 @@ namespace TgenNetProtocol
             }
         }
 
-        /// <summary>
-        /// Dispose stops the broadcast for this object
-        /// this object won't recive any of the incoming packets and it's method won't be invoked
-        /// </summary>
         public void Dispose()
         {
             NetworkMethodEvent -= InvokeMethods;
@@ -114,9 +110,7 @@ namespace TgenNetProtocol
             }
         }
 
-        public void InvokeNetworkMethods(MethodInfo method, object[] objetsToSend, object ObjectThatOwnsTheMethod)
-        {
+        public void InvokeNetworkMethods(MethodInfo method, object[] objetsToSend, object ObjectThatOwnsTheMethod) =>
             method.Invoke(ObjectThatOwnsTheMethod, objetsToSend);
-        }
     }
 }

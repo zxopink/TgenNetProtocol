@@ -65,10 +65,12 @@ namespace TgenNetProtocol
             }
         }
 
-        //Hiding isn't intended as it is used for basic dispose, this one is for network dispose
 #pragma warning disable CS0108 // 'FormNetworkBehavour.Dispose()' hides inherited member 'Component.Dispose()'. Use the new keyword if hiding was intended.
+        //Hiding isn't intended as it is used for basic dispose, this one is for network dispose
+        /// <summary>
+        /// Removes the object's methods from the network calls
+        /// </summary>
         public void Dispose()
-#pragma warning restore CS0108 // 'FormNetworkBehavour.Dispose()' hides inherited member 'Component.Dispose()'. Use the new keyword if hiding was intended.
         {
             Thread removeFromList = new Thread(RemoveFromAttributes);
             removeFromList.Start();
@@ -83,37 +85,12 @@ namespace TgenNetProtocol
 
         }
 
-        [Obsolete]
         /// <summary>
         /// will not work on static methods
         /// </summary>
         /// <param name="method">The Method to invoke</param>
         /// <param name="objetsToSend">the arguments the Method takes</param>
         /// <param name="ObjectThatOwnsTheMethod">The object that 'owns' the method</param>
-        public void InvokeSafely(MethodInfo method, object[] objetsToSend, object ObjectThatOwnsTheMethod)
-        {
-            if (!method.IsStatic)
-            {
-                var tArgs = new List<Type>();
-                foreach (var param in method.GetParameters())
-                    tArgs.Add(param.ParameterType);
-                tArgs.Add(method.ReturnType);
-                var delDecltype = Expression.GetDelegateType(tArgs.ToArray());
-                var del = Delegate.CreateDelegate(delDecltype, ObjectThatOwnsTheMethod, method);
-                Invoke(del, objetsToSend);
-            }
-            else
-            {
-                var tArgs = new List<Type>();
-                foreach (var param in method.GetParameters())
-                    tArgs.Add(param.ParameterType);
-                tArgs.Add(method.ReturnType);
-                var delDecltype = Expression.GetDelegateType(tArgs.ToArray());
-                var del = Delegate.CreateDelegate(delDecltype, method);
-                Invoke(del, objetsToSend);
-            }
-        }
-
         public void InvokeNetworkMethods(MethodInfo method, object[] objetsToSend, object ObjectThatOwnsTheMethod)
         {
             if (!method.IsStatic)
