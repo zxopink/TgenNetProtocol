@@ -45,7 +45,7 @@ namespace TgenNetProtocol
 
         //private bool listen = false; //made to control the listening thread
 
-        public ServerManager(int port) {this.port = port; }
+        public ServerManager(int port) {this.port = port; active = false; }
 
         private bool active; // field
         public bool Active   // property
@@ -200,7 +200,6 @@ namespace TgenNetProtocol
                 {
                     //BinaryFormatter bi = new BinaryFormatter();
                     //object message = bi.Deserialize(stm);
-
                     object message = TgenFormatter.Deserialize(stm);
                     //ServerCommunication.Program.MessageRecived(message, user);
                     //ServerNetworkReciverAttribute callAll = new ServerNetworkReciverAttribute();

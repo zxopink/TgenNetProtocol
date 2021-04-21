@@ -237,7 +237,6 @@ namespace TgenNetProtocol
                     {
                         //BinaryFormatter bi = new BinaryFormatter();
                         //object message = bi.Deserialize(stm);
-
                         object message = TgenFormatter.Deserialize(stm);
                         //ClientNetworkReciverAttribute network = new ClientNetworkReciverAttribute();
                         //network.SendNewMessage(Message);

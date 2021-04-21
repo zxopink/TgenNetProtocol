@@ -50,8 +50,9 @@
     <Reference Include="System.Data" />
     <Reference Include="System.Net.Http" />
     <Reference Include="System.Xml" />
-    <Reference Include="TgenSerializer">
-      <HintPath>..\..\..\..\..\..\..\Users\yoavh\source\repos\TgenSerializer\TgenSerializer\bin\Debug\TgenSerializer.dll</HintPath>
+    <Reference Include="TgenSerializer, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\..\TgenSerializer\TgenSerializer\bin\Debug\TgenSerializer.dll</HintPath>
     </Reference>
     <Reference Include="UnityEngine">
       <HintPath>..\..\..\..\..\..\..\Users\yoavh\source\repos\Slime Ranchers Multiplayer\Slime Ranchers Multiplayer\obj\UnityEngine.dll</HintPath>
