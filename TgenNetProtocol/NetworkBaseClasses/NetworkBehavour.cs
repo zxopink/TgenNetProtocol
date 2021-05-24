@@ -56,10 +56,10 @@ namespace TgenNetProtocol
             bool isDone = false;
             while (!isDone)
             {
-                if (!AttributeActions.isWorking)
+                if (!TypeSetter.isWorking)
                 {
                     TgenLog.Log("adding " + this.ToString() + " to the list");
-                    AttributeActions.networkObjects.Add(this);
+                    TypeSetter.networkObjects.Add(this);
                     isDone = true;
                 }
             }
@@ -70,9 +70,9 @@ namespace TgenNetProtocol
             bool isDone = false;
             while (!isDone)
             {
-                if (!AttributeActions.isWorking)
+                if (!TypeSetter.isWorking)
                 {
-                    AttributeActions.networkObjects.Remove(this);
+                    TypeSetter.networkObjects.Remove(this);
                     isDone = true;
                 }
             }
