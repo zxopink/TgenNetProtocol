@@ -1,77 +1,12 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using TgenNetProtocol;
 
 namespace TgenNetTools
 {
     public static class Tools
     {
-        /*
-        [Serializable]
-        public struct FileData
-        {
-            public string name;
-            public byte[] data;
-        }
-        [Serializable]
-        public class FolderData
-        {
-            public string name;
-            public List<FileData> files = new List<FileData>();
-            public List<FolderData> folders = new List<FolderData>();
-        }
-        public enum FileType
-        {
-            File,
-            Directory
-        }
-        [Serializable]
-        public class NetworkFile
-        {
-            public FileType fileType;
-            public string name;
-
-            public List<NetworkFile> files;
-            //public List<NetworkFile> Files { get { return files; } set => FillData(value); }
-
-            public byte[] data;
-            //public byte[] Data { get { return data; } set => FillData(value); }
-            public NetworkFile(string name, FileType fileType = FileType.File)
-            {
-                this.name = name;
-                this.fileType = fileType;
-
-                if (fileType == FileType.Directory)
-                    files = new List<NetworkFile>();
-            }
-
-            public void FillData(List<NetworkFile> files)
-            {
-                if (fileType != FileType.Directory)
-                    throw new Exception("This file is of type " + fileType);
-
-                this.files.AddRange(files);
-            }
-            public void FillData(NetworkFile file)
-            {
-                if (fileType != FileType.Directory)
-                    throw new Exception("This file is of type " + fileType);
-                files.Add(file);
-            }
-
-            public void FillData(byte[] data)
-            {
-                if (fileType != FileType.File)
-                    throw new Exception("This file is of type " + fileType);
-
-                this.data = data;
-            }
-        }
-        */
         public static NetworkFile PackFile(string path)
         {
             if (IsDirectory(path)) //Path is a folder
@@ -117,19 +52,6 @@ namespace TgenNetTools
         }
 
         private static bool IsDirectory(string path) => (File.GetAttributes(path) & FileAttributes.Directory) == FileAttributes.Directory;
-        /*
-        private static bool IsDirectory(string path)
-        {
-            // get the file attributes for file or directory
-            FileAttributes attr = File.GetAttributes(path);
-
-            //detect whether its a directory or file
-            if ((attr & FileAttributes.Directory) == FileAttributes.Directory)
-                MessageBox.Show("Its a directory");
-            else
-                MessageBox.Show("Its a file");
-        }
-        */
 
         public static void UnpackFile(string header, NetworkFile file)
         {

@@ -2,14 +2,8 @@
 using System.Collections.Generic;
 using System.Net.Sockets;
 using System.Threading;
-using System.Runtime.Serialization.Formatters.Binary;
-using System.Runtime.CompilerServices;
-using System.Linq;
-using System.Runtime.InteropServices;
 using System.Net;
 using TgenSerializer;
-using System.IO;
-using System.Threading.Tasks;
 
 namespace TgenNetProtocol
 {
@@ -92,7 +86,7 @@ namespace TgenNetProtocol
                 object message = TgenFormatter.Deserialize(stm);
                 TypeSetter.SendNewServerMessage(message, client);
             }
-            //the program WILL crash when client server
+            //the program WILL crash when client hangs the server
             //the catch makes sure to handle the program properly when a client leaves
             catch
             {
@@ -126,9 +120,9 @@ namespace TgenNetProtocol
         private void AbortClient(ClientData client)
         {
             TcpClient tcpClient = client;
-            if (client) ClientDisconnectedEvent?.Invoke(client);
             clients.Remove(client);
             tcpClient.Close();
+            ClientDisconnectedEvent?.Invoke(client);
         }
 
         /// <summary>

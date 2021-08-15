@@ -2,10 +2,6 @@
 using System.Threading;
 using System.Net;
 using System.Net.Sockets;
-using System.Runtime.Serialization.Formatters.Binary;
-using System.Threading.Tasks;
-using System.IO;
-using System.Text;
 using TgenSerializer;
 
 namespace TgenNetProtocol
@@ -50,11 +46,9 @@ namespace TgenNetProtocol
                     }
                 }
                 return "No network adapters with an IPv4 address in the system!";
-                //throw new Exception("No network adapters with an IPv4 address in the system!");
             }
         }
 
-        //public bool isConnected { get => tcpClient.Connected; }
         public ClientManager()
         {
             client = (Client)new TcpClient(); //make an empty one that will be replaced for later
@@ -85,13 +79,6 @@ namespace TgenNetProtocol
 
             try
             {
-                //TcpClient tcpClient = client;
-                //tcpClient = new TcpClient(); //makes a new TcpClient in case the client wants to use the same clientmanager and reuse it or reconnect
-                //tcpClient.Connect(ip, port);
-
-                //tcpClient.NoDelay = true; //disables delay which occures when sending small chunks or data
-                //tcpClient.Client.NoDelay = true; //disables delay which occures when sending small chunks or data
-
                 client.Connect(ip, port);
 
                 MessageListener = new Thread(ListenToIncomingMessages);
@@ -114,7 +101,6 @@ namespace TgenNetProtocol
                     attemptCounter = 0;
                     Console.WriteLine("Was not able to connect the server after " + maxAttemptCount + " attempts");
                     return false;
-                    //throw new Exception("Was not able to connect the server after " + maxAttemptCount + " attempts"); //a console print is enough
                 }
                 else
                     Connect(ip, port);
@@ -162,14 +148,12 @@ namespace TgenNetProtocol
                         TypeSetter.SendNewClientMessage(message);
                     }
                 }
-                //Close();
                 OnDisconnect?.Invoke();
             }
             catch (ThreadAbortException e)
             {
                 //this usually happens when the client closes the listener
                 //since the thread isn't in use so it aborts it
-                //Close();
                 OnDisconnect?.Invoke();
             }
 
@@ -177,13 +161,11 @@ namespace TgenNetProtocol
             {
                 //this usually happens when the client closes the ClientTcp
                 //the ClientTcp is disposed(null) so it can't get the connected property of it
-                //Close();
                 OnDisconnect?.Invoke();
             }
 
             catch (Exception e)
             {
-                //Close();
                 OnDisconnect?.Invoke();
             }
         }

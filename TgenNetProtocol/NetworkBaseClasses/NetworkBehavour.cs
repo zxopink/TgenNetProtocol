@@ -1,8 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.Threading;
 using System.Reflection;
 
@@ -84,9 +82,6 @@ namespace TgenNetProtocol
 
             Thread removeFromList = new Thread(RemoveFromAttributes);
             removeFromList.Start();
-            //Thread removeFromList = new Thread(RemoveFromAttributes);
-            //removeFromList.Start(); //the attribute class takes care of null
-            //GC.SuppressFinalize(this);
         }
 
         public static void RunMethods()

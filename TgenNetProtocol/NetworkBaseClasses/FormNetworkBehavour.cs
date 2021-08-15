@@ -80,9 +80,6 @@ namespace TgenNetProtocol
             Thread removeFromList = new Thread(RemoveFromAttributes);
             removeFromList.Start();
             base.Dispose(true);
-            //Thread removeFromList = new Thread(RemoveFromAttributes);
-            //removeFromList.Start(); //the attribute class takes care of null
-            //GC.SuppressFinalize(this);
         }
 
         private void FormNetworkBehavour_Load(object sender, EventArgs e)
