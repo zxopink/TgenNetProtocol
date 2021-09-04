@@ -16,7 +16,7 @@ namespace TgenNetProtocol
         public event NetworkActivity ClientConnectedEvent;
         private List<ClientData> clients = new List<ClientData>();
         private TcpListener listener;
-        private int port;
+        private readonly int port;
 
         //private bool listen = false; //made to control the listening thread
 
