@@ -3,6 +3,7 @@ using System.Threading;
 using System.Net;
 using System.Net.Sockets;
 using TgenSerializer;
+using System.Threading.Tasks;
 
 namespace TgenNetProtocol
 {
@@ -19,6 +20,9 @@ namespace TgenNetProtocol
         /// On connection aborted
         /// </summary>
         public event ClientActivity OnDisconnect;
+
+        private Formatter formatter;
+        public Formatter Formatter { get => formatter; }
 
         /// <summary>
         /// Checks if the listener for messages is active
@@ -52,6 +56,12 @@ namespace TgenNetProtocol
         public ClientManager()
         {
             client = (Client)new TcpClient(); //make an empty one that will be replaced for later
+            formatter = new Formatter(FormatCompression.Binary);
+        }
+        public ClientManager(Formatter formatter)
+        {
+            client = (Client)new TcpClient(); //make an empty one that will be replaced for later
+            this.formatter = formatter;
         }
 
         public bool Connected { get => client; }
@@ -103,9 +113,46 @@ namespace TgenNetProtocol
                     return false;
                 }
                 else
-                    Connect(ip, port);
+                    return Connect(ip, port);
             }
-            return false;
+        }
+
+        public async Task<bool> ConnectAsync(string ip, int port)
+        {
+            if (client)
+            {
+                TgenLog.Log("Client is already connected to a server!");
+                return true;
+            }
+
+            try
+            {
+                await client.ConnectAsync(ip, port);
+
+                MessageListener = new Thread(ListenToIncomingMessages);
+                MessageListener.Start();
+                attemptCounter = 0;
+                OnConnect?.Invoke();
+                return true;
+            }
+            catch (SocketException e)
+            {
+                TgenLog.Log(e.ToString());
+
+                if (!makeAttempts)
+                    return false;
+
+                attemptCounter++;
+                Console.WriteLine("Attempt number " + attemptCounter + " to connect the server");
+                if (attemptCounter == maxAttemptCount)
+                {
+                    attemptCounter = 0;
+                    Console.WriteLine("Was not able to connect the server after " + maxAttemptCount + " attempts");
+                    return false;
+                }
+                else
+                    return await ConnectAsync(ip, port);
+            }
         }
 
         public void Close()
@@ -121,7 +168,7 @@ namespace TgenNetProtocol
                 if (client)
                 {
                     NetworkStream stm = client;
-                    TgenFormatter.Serialize(stm, message);
+                    Formatter.Serialize(stm, message);
                 }
                 else
                     Console.WriteLine("The client isn't connected to a server!");
@@ -144,7 +191,7 @@ namespace TgenNetProtocol
                 {
                     if (stm.DataAvailable && !client.IsControlled)
                     {
-                        object message = TgenFormatter.Deserialize(stm);
+                        object message = Formatter.Deserialize(stm);
                         TypeSetter.SendNewClientMessage(message);
                     }
                 }

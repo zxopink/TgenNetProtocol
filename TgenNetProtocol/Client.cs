@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Net.Sockets;
+using System.Threading.Tasks;
 
 namespace TgenNetProtocol
 {
@@ -32,6 +33,16 @@ namespace TgenNetProtocol
 
             tcpClient.NoDelay = true; //disables delay which occures when sending small chunks or data
             tcpClient.Client.NoDelay = true; //disables delay which occures when sending small chunks or data
+        }
+
+        public Task ConnectAsync(string ip, int port)
+        {
+            Task connect = tcpClient.ConnectAsync(ip, port);
+
+            tcpClient.NoDelay = true; //disables delay which occures when sending small chunks or data
+            tcpClient.Client.NoDelay = true; //disables delay which occures when sending small chunks or data
+
+            return connect;
         }
 
         public void Close()

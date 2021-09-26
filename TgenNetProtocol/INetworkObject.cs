@@ -6,12 +6,12 @@ namespace TgenNetProtocol
 {
     public interface INetworkObject : IDisposable
     {
-        IEnumerable<MethodInfo> ServerMethods { get; }
-        IEnumerable<MethodInfo> ClientMethods { get; }
+        List<MethodData> ServerMethods { get; }
+        List<MethodData> ClientMethods { get; }
 
         void SetUpMethods();
 
-        void InvokeNetworkMethods(MethodInfo method, object[] objetsToSend, object ObjectThatOwnsTheMethod);
+        void InvokeNetworkMethods(MethodData method, object[] objetsToSend);
 
         /// <summary>
         /// Dispose stops the broadcast for this object

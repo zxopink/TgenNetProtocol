@@ -4,12 +4,12 @@ namespace TgenNetProtocol
 {
     #region Attributes
     [AttributeUsage(AttributeTargets.Method)]
-    public class ServerNetworkReciverAttribute : Attribute
+    public class ServerReceiverAttribute : Attribute
     {
     }
 
     [AttributeUsage(AttributeTargets.Method)]
-    public class ClientNetworkReciverAttribute : Attribute
+    public class ClientReceiverAttribute : Attribute
     {
     }
     #endregion

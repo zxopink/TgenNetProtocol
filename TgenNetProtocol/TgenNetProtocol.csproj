@@ -68,6 +68,7 @@
     <Compile Include="ControlledClient.cs" />
     <Compile Include="FileLog.cs" />
     <Compile Include="INetworkObject.cs" />
+    <Compile Include="MethodData.cs" />
     <Compile Include="NetworkBaseClasses\FormNetworkBehavour.cs">
       <SubType>Form</SubType>
     </Compile>

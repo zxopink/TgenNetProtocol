@@ -1,24 +1,19 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.ComponentModel;
 using System.Data;
-using System.Drawing;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.Windows.Forms;
 using System.Reflection;
-using System.Linq.Expressions;
-using System.Threading;
+using System.Threading.Tasks;
 
 namespace TgenNetProtocol
 {
     public partial class FormNetworkBehavour : Form, INetworkObject
     {
-        private IEnumerable<MethodInfo> serverMethods;
-        private IEnumerable<MethodInfo> clientMethods;
-        public IEnumerable<MethodInfo> ServerMethods { get => serverMethods; }
-        public IEnumerable<MethodInfo> ClientMethods { get => clientMethods; }
+        private List<MethodData> serverMethods;
+        private List<MethodData> clientMethods;
+        public List<MethodData> ServerMethods { get => serverMethods; }
+        public List<MethodData> ClientMethods { get => clientMethods; }
 
         public FormNetworkBehavour()
         {
@@ -27,17 +22,26 @@ namespace TgenNetProtocol
             this.HandleCreated += FormReady;
         }
 
-        private void FormReady(object sender, EventArgs e)
-        {
-            Thread addToList = new Thread(AddToAttributes);
-            addToList.Start();
-        }
+        private void FormReady(object sender, EventArgs e) =>
+            Task.Run(AddToAttributes);
 
         public void SetUpMethods()
         {
-            Type type = this.GetType();
-            serverMethods = type.GetMethods().Where(x => x.GetCustomAttributes(typeof(ServerNetworkReciverAttribute), false).FirstOrDefault() != null);
-            clientMethods = type.GetMethods().Where(x => x.GetCustomAttributes(typeof(ClientNetworkReciverAttribute), false).FirstOrDefault() != null);
+            Type type = GetType();
+            IEnumerable<MethodInfo> serverActions = type.GetMethods().Where(x => x.GetCustomAttributes(typeof(ServerReceiverAttribute), false).FirstOrDefault() != null);
+            IEnumerable<MethodInfo> clientActions = type.GetMethods().Where(x => x.GetCustomAttributes(typeof(ClientReceiverAttribute), false).FirstOrDefault() != null);
+
+            serverMethods = GetMethodsData(serverActions);
+            clientMethods = GetMethodsData(clientActions);
+        }
+
+        private List<MethodData> GetMethodsData(IEnumerable<MethodInfo> methods)
+        {
+            List<MethodData> methodDatas = new List<MethodData>();
+            foreach (MethodInfo item in methods)
+                methodDatas.Add(new MethodData(item, this));
+
+            return methodDatas;
         }
 
         /// <summary>
@@ -67,6 +71,8 @@ namespace TgenNetProtocol
                     TypeSetter.networkObjects.Remove(this);
                     isDone = true;
                 }
+                ServerMethods.Clear();
+                ClientMethods.Clear();
             }
         }
 
@@ -77,8 +83,7 @@ namespace TgenNetProtocol
         /// </summary>
         public void Dispose()
         {
-            Thread removeFromList = new Thread(RemoveFromAttributes);
-            removeFromList.Start();
+            Task.Run(RemoveFromAttributes);
             base.Dispose(true);
         }
 
@@ -88,33 +93,11 @@ namespace TgenNetProtocol
         }
 
         /// <summary>
-        /// will not work on static methods
+        /// 
         /// </summary>
         /// <param name="method">The Method to invoke</param>
         /// <param name="objetsToSend">the arguments the Method takes</param>
-        /// <param name="ObjectThatOwnsTheMethod">The object that 'owns' the method</param>
-        public void InvokeNetworkMethods(MethodInfo method, object[] objetsToSend, object ObjectThatOwnsTheMethod)
-        {
-            if (!method.IsStatic)
-            {
-                var tArgs = new List<Type>();
-                foreach (var param in method.GetParameters())
-                    tArgs.Add(param.ParameterType);
-                tArgs.Add(method.ReturnType);
-                var delDecltype = Expression.GetDelegateType(tArgs.ToArray());
-                var del = Delegate.CreateDelegate(delDecltype, ObjectThatOwnsTheMethod, method);
-                Invoke(del, objetsToSend);
-            }
-            else
-            {
-                var tArgs = new List<Type>();
-                foreach (var param in method.GetParameters())
-                    tArgs.Add(param.ParameterType);
-                tArgs.Add(method.ReturnType);
-                var delDecltype = Expression.GetDelegateType(tArgs.ToArray());
-                var del = Delegate.CreateDelegate(delDecltype, method);
-                Invoke(del, objetsToSend);
-            }
-        }
+        public void InvokeNetworkMethods(MethodData method, object[] objetsToSend) =>
+            Invoke(method.Delegate, objetsToSend);
     }
 }

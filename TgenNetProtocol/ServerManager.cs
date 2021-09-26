@@ -18,9 +18,14 @@ namespace TgenNetProtocol
         private TcpListener listener;
         private readonly int port;
 
+        private Formatter formatter;
+        public Formatter Formatter { get => formatter; }
         //private bool listen = false; //made to control the listening thread
 
-        public ServerManager(int port) {this.port = port; active = false; }
+        public ServerManager(int port) 
+        {this.port = port; active = false; formatter = new Formatter(FormatCompression.Binary); }
+        public ServerManager(int port, Formatter formatter) 
+        { this.port = port; active = false; this.formatter = formatter; }
 
         private bool active; // field
         public bool Active   // property
@@ -83,7 +88,7 @@ namespace TgenNetProtocol
             if (!stm.DataAvailable) return;
             try
             {
-                object message = TgenFormatter.Deserialize(stm);
+                object message = Formatter.Deserialize(stm);
                 TypeSetter.SendNewServerMessage(message, client);
             }
             //the program WILL crash when client hangs the server
@@ -99,7 +104,7 @@ namespace TgenNetProtocol
         {
             while (active)
             {
-                if (listener.Pending())
+                while (listener.Pending())
                     AcceptIncomingClient(); //Method also adds the client to the clients list
 
                 //Amount of clients can change during tick
@@ -165,7 +170,7 @@ namespace TgenNetProtocol
                 try
                 {
                     NetworkStream stm = clientTcp.GetStream();
-                    TgenFormatter.Serialize(stm, Message);
+                    Formatter.Serialize(stm, Message);
                 }
                 catch (Exception e) { if (throwOnError) throw e; /*client left as the message was serialized*/ }
             }

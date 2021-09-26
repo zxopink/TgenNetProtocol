@@ -4,7 +4,7 @@ using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
 using System.Threading;
-using UnityEngine;
+//using UnityEngine;
 
 namespace TgenNetProtocol
 {
@@ -21,7 +21,7 @@ namespace TgenNetProtocol
         public object[] parameters;
     }
     //#if UNITY_5_3_OR_NEWER
-    public class MonoNetwork : MonoBehaviour, INetworkObject
+    public class MonoNetwork //: MonoBehavour, INetworkObject
     {
         //'volatile', might wanna check what that does
         volatile List<SafeMonoInvokeData> waitingMethods = new List<SafeMonoInvokeData>();
@@ -43,8 +43,8 @@ namespace TgenNetProtocol
         public void SetUpMethods()
         {
             Type type = this.GetType();
-            serverMethods = type.GetMethods().Where(x => x.GetCustomAttributes(typeof(ServerNetworkReciverAttribute), false).FirstOrDefault() != null);
-            clientMethods = type.GetMethods().Where(x => x.GetCustomAttributes(typeof(ClientNetworkReciverAttribute), false).FirstOrDefault() != null);
+            serverMethods = type.GetMethods().Where(x => x.GetCustomAttributes(typeof(ServerReceiverAttribute), false).FirstOrDefault() != null);
+            clientMethods = type.GetMethods().Where(x => x.GetCustomAttributes(typeof(ClientReceiverAttribute), false).FirstOrDefault() != null);
         }
 
         /// <summary>
@@ -79,7 +79,7 @@ namespace TgenNetProtocol
             {
                 if (!TypeSetter.isWorking)
                 {
-                    TypeSetter.networkObjects.Add(this);
+                    //TypeSetter.networkObjects.Add(this);
                     isDone = true;
                 }
             }
@@ -151,7 +151,7 @@ namespace TgenNetProtocol
             {
                 if (!TypeSetter.isWorking)
                 {
-                    TypeSetter.networkObjects.Remove(this);
+                    //TypeSetter.networkObjects.Remove(this);
                     isDone = true;
                 }
             }
