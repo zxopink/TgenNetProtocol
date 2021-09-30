@@ -56,7 +56,7 @@ namespace TgenNetProtocol
         public ClientManager()
         {
             client = (Client)new TcpClient(); //make an empty one that will be replaced for later
-            formatter = new Formatter(FormatCompression.Binary);
+            formatter = new Formatter(CompressionFormat.Binary);
         }
         public ClientManager(Formatter formatter)
         {
