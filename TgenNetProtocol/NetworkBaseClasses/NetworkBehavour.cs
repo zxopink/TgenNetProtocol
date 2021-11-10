@@ -32,11 +32,11 @@ namespace TgenNetProtocol
 
         private List<MethodData> GetMethodsData(IEnumerable<MethodInfo> methods)
         {
-            List<MethodData> methodDatas = new List<MethodData>();
+            List<MethodData> methodsData = new List<MethodData>();
             foreach (MethodInfo item in methods)
-                methodDatas.Add(new MethodData(item, this));
+                methodsData.Add(new MethodData(item, this));
 
-            return methodDatas;
+            return methodsData;
         }
 
         /// <summary>

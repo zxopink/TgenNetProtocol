@@ -18,7 +18,7 @@ namespace TgenNetProtocol
 
         private Type[] argumentsType;
         /// <summary>
-        /// All of the function's pararameters (can also be ClientData)
+        /// All the function's parameters (can also be ClientData)
         /// </summary>
         public Type[] ArgumentsType { get => argumentsType; }
 
@@ -75,7 +75,11 @@ namespace TgenNetProtocol
             var delDecltype = Expression.GetDelegateType(args);
             return Delegate.CreateDelegate(delDecltype, parent, method);
         }
-
+        /// <summary>
+        /// </summary>
+        /// <param name="parameters">The functions parameters</param>
+        /// <returns></returns>
+        /// <exception cref="Exception">when things go wrong.</exception>
         public object Invoke(object[] parameters) =>
             method.Invoke(parent, parameters);
     }
