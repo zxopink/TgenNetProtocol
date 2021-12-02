@@ -41,7 +41,7 @@ namespace TgenNetProtocol
         /// Sends any primitive type (int, string, byte) and byte array (byte[])
         /// </summary>
         /// <param name="obj"></param>
-        public void Send(BinaryBuilder obj)
+        public void Send(Bytes obj)
         {
             if (!client) throw new SocketException();
 

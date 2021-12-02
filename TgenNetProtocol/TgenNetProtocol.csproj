@@ -50,8 +50,9 @@
     <Reference Include="System.Data" />
     <Reference Include="System.Net.Http" />
     <Reference Include="System.Xml" />
-    <Reference Include="TgenSerializer">
-      <HintPath>..\..\TgenSerializer\TgenSerializer\bin\Debug\TgenSerializer.dll</HintPath>
+    <Reference Include="TgenSerializer, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\..\TgenSerializer\TgenSerializer\bin\Release\TgenSerializer.dll</HintPath>
     </Reference>
     <Reference Include="UnityEngine">
       <HintPath>..\..\..\..\..\..\..\Users\yoavh\source\repos\Slime Ranchers Multiplayer\Slime Ranchers Multiplayer\obj\UnityEngine.dll</HintPath>
@@ -69,9 +70,7 @@
     <Compile Include="FileLog.cs" />
     <Compile Include="INetworkObject.cs" />
     <Compile Include="MethodData.cs" />
-    <Compile Include="NetworkBaseClasses\FormNetworkBehavour.cs">
-      <SubType>Form</SubType>
-    </Compile>
+    <Compile Include="NetworkBaseClasses\FormNetworkBehavour.cs" />
     <Compile Include="NetworkBaseClasses\FormNetworkBehavour.Designer.cs">
       <DependentUpon>FormNetworkBehavour.cs</DependentUpon>
     </Compile>

@@ -23,7 +23,7 @@ namespace TgenNetProtocol
         //private bool listen = false; //made to control the listening thread
 
         public ServerManager(int port) 
-        {this.port = port; active = false; formatter = new Formatter(FormatCompression.Binary); }
+        {this.port = port; active = false; formatter = new Formatter(CompressionFormat.Binary); }
         public ServerManager(int port, Formatter formatter) 
         { this.port = port; active = false; this.formatter = formatter; }
 
