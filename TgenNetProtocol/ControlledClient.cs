@@ -78,8 +78,7 @@ namespace TgenNetProtocol
         private async void GetPackets()
         {
             NetworkStream stream = client;
-            TcpClient tcp = client;
-            byte[] packet = new byte[tcp.Available];
+            byte[] packet = new byte[client.Available];
             await stream.ReadAsync(packet, 0, packet.Length);
             if (!handling) return;
             ReceivedPacket?.Invoke(packet, client);

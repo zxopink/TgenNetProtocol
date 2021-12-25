@@ -8,6 +8,7 @@ namespace TgenNetProtocol
     {
         List<MethodData> ServerMethods { get; }
         List<MethodData> ClientMethods { get; }
+        List<MethodData> DgramMethods { get; }
 
         void SetUpMethods();
 

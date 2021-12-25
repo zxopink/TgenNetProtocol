@@ -2,32 +2,36 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace TgenNetProtocol
 {
     public abstract class NetworkBehavour : INetworkObject
     {
-        private List<MethodData> serverMethods;
-        private List<MethodData> clientMethods;
-        public List<MethodData> ServerMethods { get => serverMethods; }
-        public List<MethodData> ClientMethods { get => clientMethods; }
+        public List<MethodData> ServerMethods { get; private set; }
+        public List<MethodData> ClientMethods { get; private set; }
+        public List<MethodData> DgramMethods { get; private set; }
 
         public NetworkBehavour()
         {
             SetUpMethods();
 
-            Task.Run(AddToAttributes);
+            //`System.Threading.Monitor` check later, responsible for thread work
+            //Task.Run(AddToAttributes);
+            Add2Attributes();
         }
 
         public void SetUpMethods()
         {
-            Type type = GetType();
-            IEnumerable<MethodInfo> serverActions = type.GetMethods().Where(x => x.GetCustomAttributes(typeof(ServerReceiverAttribute), false).FirstOrDefault() != null);
-            IEnumerable<MethodInfo> clientActions = type.GetMethods().Where(x => x.GetCustomAttributes(typeof(ClientReceiverAttribute), false).FirstOrDefault() != null);
+            MethodInfo[] methods = GetType().GetMethods();
+            IEnumerable<MethodInfo> serverActions = methods.Where(x => x.GetCustomAttributes(typeof(ServerReceiverAttribute), false).FirstOrDefault() != null);
+            IEnumerable<MethodInfo> clientActions = methods.Where(x => x.GetCustomAttributes(typeof(ClientReceiverAttribute), false).FirstOrDefault() != null);
+            IEnumerable<MethodInfo> dgramAction = methods.Where(x => x.GetCustomAttributes(typeof(DgramReceiverAttribute), false).FirstOrDefault() != null);
 
-            serverMethods = GetMethodsData(serverActions);
-            clientMethods = GetMethodsData(clientActions);
+            ServerMethods = GetMethodsData(serverActions);
+            ClientMethods = GetMethodsData(clientActions);
+            DgramMethods = GetMethodsData(dgramAction);
         }
 
         private List<MethodData> GetMethodsData(IEnumerable<MethodInfo> methods)
@@ -56,6 +60,11 @@ namespace TgenNetProtocol
                 }
             }
         }
+        private void Add2Attributes()
+        {
+            TgenLog.Log("adding " + this.ToString() + " to the list");
+            TypeSetter.networkObjects.Add(this);
+        }
 
         private void RemoveFromAttributes()
         {
@@ -69,11 +78,23 @@ namespace TgenNetProtocol
                 }
                 ServerMethods.Clear();
                 ClientMethods.Clear();
+                DgramMethods.Clear();
             }
         }
 
+        private void Remove2Attributes()
+        {
+            int index = TypeSetter.networkObjects.IndexOf(this);
+            if(index != -1) //Found
+                TypeSetter.networkObjects[index] = null;
+
+            ServerMethods.Clear();
+            ClientMethods.Clear();
+            DgramMethods.Clear();
+        }
+
         public void Dispose() =>
-            Task.Run(RemoveFromAttributes);
+            Remove2Attributes();//Task.Run(RemoveFromAttributes);
 
         public void InvokeNetworkMethods(MethodData method, object[] objetsToSend) =>
             method.Invoke(objetsToSend);

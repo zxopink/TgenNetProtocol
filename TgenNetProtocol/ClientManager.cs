@@ -37,6 +37,12 @@ namespace TgenNetProtocol
             get { try { return new WebClient().DownloadString("http://icanhazip.com"); } catch (Exception) { return "Unable to load public IP"; } }
         }
 
+        /// <summary>Returns a new socket of the protocol's type</summary>
+        private Socket getNewSocket 
+        {
+            get { return new Socket(SocketType.Stream, ProtocolType.Tcp); }
+        }
+
         public string LocalIp
         {
             get
@@ -55,12 +61,12 @@ namespace TgenNetProtocol
 
         public ClientManager()
         {
-            client = (Client)new TcpClient(); //make an empty one that will be replaced for later
+            client = (Client)getNewSocket; //make an empty one that will be replaced for later
             formatter = new Formatter(CompressionFormat.Binary);
         }
         public ClientManager(Formatter formatter)
         {
-            client = (Client)new TcpClient(); //make an empty one that will be replaced for later
+            client = (Client)getNewSocket; //make an empty one that will be replaced for later
             this.formatter = formatter;
         }
 
@@ -155,10 +161,15 @@ namespace TgenNetProtocol
             }
         }
 
+        //TODO: make a proper binding
+        public void Bind(IPEndPoint localEndPoint)
+        {
+            ((Socket)client).Bind(localEndPoint);
+        }
         public void Close()
         {
             client.Close();
-            client = (Client)new TcpClient();
+            client = (Client)getNewSocket;
         }
 
         public void Send(object message, bool throwOnError = false)

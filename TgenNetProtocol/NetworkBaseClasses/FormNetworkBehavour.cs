@@ -10,10 +10,9 @@ namespace TgenNetProtocol
 {
     public partial class FormNetworkBehavour : Form, INetworkObject
     {
-        private List<MethodData> serverMethods;
-        private List<MethodData> clientMethods;
-        public List<MethodData> ServerMethods { get => serverMethods; }
-        public List<MethodData> ClientMethods { get => clientMethods; }
+        public List<MethodData> ServerMethods { get; private set; }
+        public List<MethodData> ClientMethods { get; private set; }
+        public List<MethodData> DgramMethods { get; private set; }
 
         public FormNetworkBehavour()
         {
@@ -23,16 +22,18 @@ namespace TgenNetProtocol
         }
 
         private void FormReady(object sender, EventArgs e) =>
-            Task.Run(AddToAttributes);
+            Add2Attributes();//Task.Run(AddToAttributes);
 
         public void SetUpMethods()
         {
-            Type type = GetType();
-            IEnumerable<MethodInfo> serverActions = type.GetMethods().Where(x => x.GetCustomAttributes(typeof(ServerReceiverAttribute), false).FirstOrDefault() != null);
-            IEnumerable<MethodInfo> clientActions = type.GetMethods().Where(x => x.GetCustomAttributes(typeof(ClientReceiverAttribute), false).FirstOrDefault() != null);
+            MethodInfo[] methods = GetType().GetMethods();
+            IEnumerable<MethodInfo> serverActions = methods.Where(x => x.GetCustomAttributes(typeof(ServerReceiverAttribute), false).FirstOrDefault() != null);
+            IEnumerable<MethodInfo> clientActions = methods.Where(x => x.GetCustomAttributes(typeof(ClientReceiverAttribute), false).FirstOrDefault() != null);
+            IEnumerable<MethodInfo> dgramAction = methods.Where(x => x.GetCustomAttributes(typeof(DgramReceiverAttribute), false).FirstOrDefault() != null);
 
-            serverMethods = GetMethodsData(serverActions);
-            clientMethods = GetMethodsData(clientActions);
+            ServerMethods = GetMethodsData(serverActions);
+            ClientMethods = GetMethodsData(clientActions);
+            DgramMethods = GetMethodsData(dgramAction);
         }
 
         private List<MethodData> GetMethodsData(IEnumerable<MethodInfo> methods)
@@ -60,6 +61,11 @@ namespace TgenNetProtocol
                 }
             }
         }
+        private void Add2Attributes()
+        {
+            TgenLog.Log("adding " + this.ToString() + " to the list");
+            TypeSetter.networkObjects.Add(this);
+        }
 
         private void RemoveFromAttributes()
         {
@@ -73,7 +79,19 @@ namespace TgenNetProtocol
                 }
                 ServerMethods.Clear();
                 ClientMethods.Clear();
+                DgramMethods.Clear();
             }
+        }
+
+        private void Remove2Attributes()
+        {
+            int index = TypeSetter.networkObjects.IndexOf(this);
+            if (index != -1) //Found
+                TypeSetter.networkObjects[index] = null;
+
+            ServerMethods.Clear();
+            ClientMethods.Clear();
+            DgramMethods.Clear();
         }
 
 #pragma warning disable CS0108 // 'FormNetworkBehavour.Dispose()' hides inherited member 'Component.Dispose()'. Use the new keyword if hiding was intended.
@@ -83,7 +101,8 @@ namespace TgenNetProtocol
         /// </summary>
         public void Dispose()
         {
-            Task.Run(RemoveFromAttributes);
+            //Task.Run(RemoveFromAttributes);
+            Remove2Attributes();
             base.Dispose(true);
         }
 

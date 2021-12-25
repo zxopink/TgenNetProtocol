@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Net;
 using System.Net.Sockets;
 using System.Threading.Tasks;
 
@@ -6,48 +7,63 @@ namespace TgenNetProtocol
 {
     public class Client
     {
-        private TcpClient tcpClient;
+        private Socket client;
+        public Socket Socket { get => client; }
 
         private bool controlled { get => controlledInstance != null; }
         public bool IsControlled { get => controlled; }
 
+        public EndPoint RemoteEndPoint => client.RemoteEndPoint;
+        public EndPoint LocalEndPoint => client.LocalEndPoint;
+
+        private NetworkStream networkStream;
         public NetworkStream NetworkStream
         {
-            get {
+            get
+            {
                 if (!this) throw new Exception("Can't get NetworkStream, Client is not connected");
-                return tcpClient.GetStream();
-            } 
+                if (networkStream != null)
+                    return networkStream;
+
+                networkStream = new NetworkStream(client);
+                return networkStream;
+            }
         }
 
-        public bool IsActive { get { try { return tcpClient.Connected; } catch { return false; } } }
+        public int Available => client.Available;
 
+        public bool IsActive { get { try { return client.Connected; } catch { return false; } } }
+        /*
         public Client(TcpClient tcpClient)
         {
-            this.tcpClient = tcpClient;
+            this.client = tcpClient.Client;
+            controlledInstance = null;
+        }
+        */
+        public Client(Socket socket)
+        {
+            this.client = socket;
             controlledInstance = null;
         }
 
         public void Connect(string ip, int port)
         {
-            tcpClient.Connect(ip, port);
+            client.Connect(ip, port);
 
-            tcpClient.NoDelay = true; //disables delay which occures when sending small chunks or data
-            tcpClient.Client.NoDelay = true; //disables delay which occures when sending small chunks or data
+            client.NoDelay = true;
         }
 
         public Task ConnectAsync(string ip, int port)
         {
-            Task connect = tcpClient.ConnectAsync(ip, port);
-
-            tcpClient.NoDelay = true; //disables delay which occures when sending small chunks or data
-            tcpClient.Client.NoDelay = true; //disables delay which occures when sending small chunks or data
-
-            return connect;
+            return Task.Run(() => {
+                client.Connect(ip, port);
+                client.NoDelay = true; //disables delay which occures when sending small chunks or data
+            });
         }
 
         public void Close()
         {
-            tcpClient.Close();
+            client.Close();
         }
 
         ControlledClient controlledInstance;
@@ -78,15 +94,19 @@ namespace TgenNetProtocol
                 controlledInstance = null;
             }
             else
-                throw new Exception("The given controlInstance does not fit the one taken");
+                throw new Exception("The given controlInstance does not fit the taken one");
         }
 
         public static implicit operator bool(Client client) => client.IsActive;
         public static implicit operator ControlledClient(Client client) => client.TakeControl();
         public static implicit operator NetworkStream(Client client) => client.NetworkStream;
-        public static implicit operator TcpClient(Client client) => client.tcpClient;
+        public static implicit operator Socket(Client client) => client.client;
+        public static implicit operator EndPoint(Client client) => client.RemoteEndPoint;
+        public static implicit operator IPEndPoint(Client client) => (IPEndPoint)client.RemoteEndPoint;
 
-        public static explicit operator Client(TcpClient tcpClient) => new Client(tcpClient);
+        //Deprecated
+        //public static explicit operator Client(TcpClient tcpClient) => new Client(tcpClient);
+        public static explicit operator Client(Socket socket) => new Client(socket);
     }
 
 }

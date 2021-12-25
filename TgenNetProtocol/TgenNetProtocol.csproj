@@ -64,13 +64,16 @@
   <ItemGroup>
     <Compile Include="Atrributes.cs" />
     <Compile Include="Client.cs" />
-    <Compile Include="ClientData.cs" />
+    <Compile Include="ClientInfo.cs" />
     <Compile Include="ClientManager.cs" />
     <Compile Include="ControlledClient.cs" />
     <Compile Include="FileLog.cs" />
+    <Compile Include="INetInfo.cs" />
     <Compile Include="INetworkObject.cs" />
     <Compile Include="MethodData.cs" />
-    <Compile Include="NetworkBaseClasses\FormNetworkBehavour.cs" />
+    <Compile Include="NetworkBaseClasses\FormNetworkBehavour.cs">
+      <SubType>Form</SubType>
+    </Compile>
     <Compile Include="NetworkBaseClasses\FormNetworkBehavour.Designer.cs">
       <DependentUpon>FormNetworkBehavour.cs</DependentUpon>
     </Compile>
@@ -81,6 +84,8 @@
     <Compile Include="ServerManager.cs" />
     <Compile Include="TgenTools\TgenTools.cs" />
     <Compile Include="TypeSetter.cs" />
+    <Compile Include="UdpInfo.cs" />
+    <Compile Include="UdpManager.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />

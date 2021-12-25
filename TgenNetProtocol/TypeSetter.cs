@@ -1,7 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Reflection;
+﻿using System.Collections.Generic;
 
 namespace TgenNetProtocol
 {
@@ -22,52 +19,23 @@ namespace TgenNetProtocol
         /// </summary>
         /// <param name="message">The sent object (Payload)</param>
         /// <param name="clientInfo">The client who sent the info</param>
-        public static void SendNewServerMessage(object message, ClientData clientInfo)
+        public static void SendNewServerMessage(object message, ClientInfo clientInfo)
         {
-            isWorking = true;
             List<object> objectsToSend = new List<object>();
             objectsToSend.Add(message);
 
-            List<INetworkObject> nullObjectsToRemove = new List<INetworkObject>();
-            foreach (var networkObject in networkObjects)
+            for (int i = 0; i < networkObjects.Count; i++)
             {
-                if (networkObject != null)
-                {
-                    // get method by name,  or loop through all methods
-                    // looking for an attribute
-                    var methodsInfo = networkObject.ServerMethods;
-                    NetworkObjHandlerServer(clientInfo, methodsInfo, message, networkObject, objectsToSend);
-                }
-                else
-                    nullObjectsToRemove.Add(networkObject);
-            }
-            isWorking = false;
+                INetworkObject networkObject = networkObjects[i];
+                if (networkObject == null)
+                    continue;
 
-            foreach (var nullObj in nullObjectsToRemove) //remove null objects (occurs with MonoNetwork when Monobehaviour.Destroy() is called)
-                networkObjects.Remove(nullObj);
-            nullObjectsToRemove.Clear();
-        }
-
-        private static void NetworkObjHandlerServer(ClientData clientInfo, List<MethodData> methodsInfo, object message, INetworkObject networkObject, List<object> objectsToSend)
-        {
-            foreach (var method in methodsInfo)
-            {
-                //if (CheckMethodFirstParameterServer(method) == message.GetType()
-                //|| CheckMethodFirstParameterServer(method) == typeof(object))
-                if (method.ParameterType.IsAssignableFrom(message.GetType()))
-                {
-                    if (method.hasClientData)
-                    {
-                        objectsToSend.Add(clientInfo);
-                        networkObject.InvokeNetworkMethods(method, objectsToSend.ToArray());
-                        objectsToSend.Remove(clientInfo);
-                    }
-                    else
-                    {
-                        networkObject.InvokeNetworkMethods(method, objectsToSend.ToArray());
-                    }
-                }
+                // get method by name,  or loop through all methods
+                // looking for an attribute
+                var methodsInfo = networkObject.ServerMethods;
+                NetworkObjHandler(clientInfo, methodsInfo, message, networkObject, objectsToSend);
             }
+            CleanNullObjects();
         }
         #endregion
 
@@ -79,43 +47,79 @@ namespace TgenNetProtocol
         /// <param name="message">The sent object (Payload)</param>
         public static void SendNewClientMessage(object message)
         {
-            isWorking = true;
             List<object> objectsToSend = new List<object>();
             objectsToSend.Add(message);
 
-            List<INetworkObject> nullObjectsToRemove = new List<INetworkObject>();
-            foreach (var networkObject in networkObjects)
+            for (int i = 0; i < networkObjects.Count; i++)
             {
-                if (networkObject != null)
-                {
-                    // get method by name,  or loop through all methods
-                    // looking for an attribute
-                    var methodsInfo = networkObject.ClientMethods;
+                INetworkObject networkObject = networkObjects[i];
+                if (networkObject == null)
+                    continue;
 
-                    NetworkObjHandlerClient(methodsInfo, message, networkObject, objectsToSend);
-                }
-                else
-                    nullObjectsToRemove.Add(networkObject);
+                // get method by name,  or loop through all methods
+                // looking for an attribute
+                var methodsInfo = networkObject.ClientMethods;
+
+                NetworkObjHandler(methodsInfo, message, networkObject, objectsToSend);
             }
-            isWorking = false;
-
-            foreach (var nullObj in nullObjectsToRemove)
-                networkObjects.Remove(nullObj);
-            nullObjectsToRemove.Clear();
+            CleanNullObjects();
         }
+        #endregion
 
-        private static void NetworkObjHandlerClient(List<MethodData> methodsInfo, object message, INetworkObject networkObject, List<object> objectsToSend)
+        #region Datagram Get Message
+        /// <summary>
+        /// Called when a packet is received from a client
+        /// this method invokes server network methods on all active network objects
+        /// </summary>
+        /// <param name="message">The sent object (Payload)</param>
+        /// <param name="packetData">The client who sent the info</param>
+        public static void SendNewDatagramMessage(object message, UdpInfo packetData)
+        {
+            List<object> objectsToSend = new List<object>();
+            objectsToSend.Add(message);
+
+            for (int i = 0; i < networkObjects.Count; i++)
+            {
+                INetworkObject networkObject = networkObjects[i];
+                if (networkObject == null)
+                    continue;
+
+                // get method by name,  or loop through all methods
+                // looking for an attribute
+                var methodsInfo = networkObject.DgramMethods;
+                NetworkObjHandler(packetData, methodsInfo, message, networkObject, objectsToSend);
+            }
+            CleanNullObjects();
+        }
+        #endregion
+
+        private static void NetworkObjHandler(INetInfo netInfo, List<MethodData> methodsInfo, object message, INetworkObject networkObject, List<object> objectsToSend)
         {
             foreach (var method in methodsInfo)
             {
-                //if (CheckMethodFirstParameterClient(method) == message.GetType()
-                //|| CheckMethodFirstParameterClient(method) == typeof(object))
                 if (method.ParameterType.IsAssignableFrom(message.GetType()))
                 {
-                    networkObject.InvokeNetworkMethods(method, objectsToSend.ToArray());
+                    if (method.HasClientData)
+                    {
+                        objectsToSend.Add(netInfo);
+                        networkObject.InvokeNetworkMethods(method, objectsToSend.ToArray());
+                        objectsToSend.Remove(netInfo);
+                    }
+                    else
+                    {
+                        networkObject.InvokeNetworkMethods(method, objectsToSend.ToArray());
+                    }
                 }
             }
         }
-        #endregion
+        private static void NetworkObjHandler(List<MethodData> methodsInfo, object message, INetworkObject networkObject, List<object> objectsToSend)
+        {
+            foreach (var method in methodsInfo)
+                if (method.ParameterType.IsAssignableFrom(message.GetType()))
+                    networkObject.InvokeNetworkMethods(method, objectsToSend.ToArray());
+        }
+
+        private static void CleanNullObjects() =>
+            networkObjects.RemoveAll(item => item == null);
     }
 }

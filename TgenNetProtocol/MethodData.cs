@@ -34,7 +34,12 @@ namespace TgenNetProtocol
         public MethodInfo Method { get => method; }
 
         public bool hasClientData;
+        ///<summary>If true, The function's second parameter is INetInfo</summary>
         public bool HasClientData { get => hasClientData; }
+
+        //public bool hasEPData;
+        ///<summary>If true, The function's second parameter is IPEndPoint</summary>
+        //public bool HasEPData { get => hasEPData; }
         public MethodData(MethodInfo method, object parent)
         {
             this.method = method; //Must be set first
@@ -60,7 +65,12 @@ namespace TgenNetProtocol
 
             //Check if method gets clientdata as parameter
             if (parameters.Length >= 2)
-                hasClientData = parameters[1].ParameterType == typeof(ClientData);
+            {
+                //throw new NotImplementedException("Make it compatible with the new Datagram protocol");
+                //hasClientData = parameters[1].ParameterType == typeof(ClientData);
+                hasClientData = typeof(INetInfo).IsAssignableFrom(parameters[1].ParameterType);
+                //hasClientData = parameters[1].ParameterType.isass == typeof(ClientData);
+            }
         }
 
         private Delegate CreateDelegate(object parent)
