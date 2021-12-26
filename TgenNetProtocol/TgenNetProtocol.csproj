@@ -26,6 +26,7 @@
     <DocumentationFile>bin\Debug\TgenNetProtocol.xml</DocumentationFile>
     <RegisterForComInterop>false</RegisterForComInterop>
     <NoWarn>1591;</NoWarn>
+    <Prefer32Bit>false</Prefer32Bit>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <PlatformTarget>AnyCPU</PlatformTarget>
@@ -35,11 +36,13 @@
     <DefineConstants>TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
+    <Prefer32Bit>false</Prefer32Bit>
   </PropertyGroup>
   <PropertyGroup>
     <StartupObject />
   </PropertyGroup>
   <ItemGroup>
+    <Reference Include="netstandard, Version=2.0.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51" />
     <Reference Include="System" />
     <Reference Include="System.Core" />
     <Reference Include="System.Drawing" />
@@ -52,7 +55,7 @@
     <Reference Include="System.Xml" />
     <Reference Include="TgenSerializer, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\..\TgenSerializer\TgenSerializer\bin\Release\TgenSerializer.dll</HintPath>
+      <HintPath>..\..\TgenSerializer\TgenSerializer\bin\Release\netstandard2.0\TgenSerializer.dll</HintPath>
     </Reference>
     <Reference Include="UnityEngine">
       <HintPath>..\..\..\..\..\..\..\Users\yoavh\source\repos\Slime Ranchers Multiplayer\Slime Ranchers Multiplayer\obj\UnityEngine.dll</HintPath>
