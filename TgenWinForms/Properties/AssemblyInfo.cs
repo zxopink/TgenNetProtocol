@@ -5,22 +5,22 @@ using System.Runtime.InteropServices;
 // General Information about an assembly is controlled through the following
 // set of attributes. Change these attribute values to modify the information
 // associated with an assembly.
-[assembly: AssemblyTitle("TgenNetProtocol")]
+[assembly: AssemblyTitle("TgenWinForms")]
 [assembly: AssemblyDescription("")]
 [assembly: AssemblyConfiguration("")]
-[assembly: AssemblyCompany("Yoav Haik")]
-[assembly: AssemblyProduct("TgenNetProtocol")]
-[assembly: AssemblyCopyright("Yoav Haik ©  2019")]
+[assembly: AssemblyCompany("")]
+[assembly: AssemblyProduct("TgenWinForms")]
+[assembly: AssemblyCopyright("Copyright ©  2021")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
 
 // Setting ComVisible to false makes the types in this assembly not visible
 // to COM components.  If you need to access a type in this assembly from
 // COM, set the ComVisible attribute to true on that type.
-[assembly: ComVisible(true)]
+[assembly: ComVisible(false)]
 
 // The following GUID is for the ID of the typelib if this project is exposed to COM
-[assembly: Guid("4ca65e14-8db9-4f1f-9ddf-3da754fd3fa1")]
+[assembly: Guid("6840bcb9-d158-4f92-bc96-1e82cb37a164")]
 
 // Version information for an assembly consists of the following four values:
 //

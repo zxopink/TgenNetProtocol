@@ -4,9 +4,8 @@ using System.Data;
 using System.Linq;
 using System.Windows.Forms;
 using System.Reflection;
-using System.Threading.Tasks;
 
-namespace TgenNetProtocol
+namespace TgenNetProtocol.WinForms
 {
     public partial class FormNetworkBehavour : Form, INetworkObject
     {
@@ -17,7 +16,6 @@ namespace TgenNetProtocol
         public FormNetworkBehavour()
         {
             SetUpMethods();
-
             this.HandleCreated += FormReady;
         }
 

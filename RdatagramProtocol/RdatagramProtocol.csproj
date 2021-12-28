@@ -5,12 +5,8 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\TgenNetProtocol\TgenNetProtocol.csproj" />
-  </ItemGroup>
-
-  <ItemGroup>
     <Reference Include="TgenSerializer">
-      <HintPath>..\..\TgenSerializer\TgenSerializer\bin\Release\TgenSerializer.dll</HintPath>
+      <HintPath>..\..\TgenSerializer\TgenSerializer\bin\Release\netstandard2.0\TgenSerializer.dll</HintPath>
     </Reference>
   </ItemGroup>
 
