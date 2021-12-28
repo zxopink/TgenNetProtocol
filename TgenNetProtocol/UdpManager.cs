@@ -7,6 +7,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using TgenSerializer;
+using LiteNetLib;
 
 namespace TgenNetProtocol
 {
@@ -15,6 +16,9 @@ namespace TgenNetProtocol
 
         private Socket client;
         private Socket Client => client;
+
+        internal EventBasedNetListener NetListener { get; private set; }
+        internal NetManager UdpClinet { get; private set; }
 
         public bool Connected => EndPoint != null;
 
@@ -33,15 +37,20 @@ namespace TgenNetProtocol
 
         }
 
-        public UdpManager(AddressFamily family) =>
-            client = getNewSocket(family);
+        public UdpManager(AddressFamily family) : this(0, family) //port 0 = any port available
+        {
+        }
 
         public UdpManager(int port) : this(port, AddressFamily.InterNetwork)
         {
         }
 
-        public UdpManager(int port, AddressFamily family)
+        public UdpManager(int port, AddressFamily family) : this(
+            family == AddressFamily.InterNetwork ? 
+            new IPEndPoint(IPAddress.Any, port) :
+            new IPEndPoint(IPAddress.IPv6Any, port))
         {
+            /*
             client = getNewSocket(family);
 
             IPEndPoint localEndPoint;
@@ -54,6 +63,7 @@ namespace TgenNetProtocol
 
             Client.Bind(localEndPoint);
             LocalEP = localEndPoint;
+            */
         }
         public UdpManager(string address, int port) : this(IPAddress.Parse(address), port)
         {
@@ -62,8 +72,13 @@ namespace TgenNetProtocol
         {
         }
 
+        //Main constructor(Called by all constructors)
         public UdpManager(IPEndPoint localEP)
         {
+            NetListener = new EventBasedNetListener();
+            UdpClinet = new NetManager(NetListener);
+
+
             client = getNewSocket(localEP.AddressFamily);
             client.Bind(localEP);
             LocalEP = localEP;
