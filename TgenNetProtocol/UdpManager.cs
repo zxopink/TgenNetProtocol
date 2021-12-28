@@ -94,17 +94,19 @@ namespace TgenNetProtocol
                     //TODO: make it IPAddress.IPv6Any when the local point family is IPv6
                     EndPoint tempRemoteEP = new IPEndPoint(IPAddress.Any, 0); //IPv4, Any port
 
-                    byte[] size = new byte[sizeof(int)];
-                    client.Receive(size);
+                    byte[] sizeBuffer = new byte[sizeof(int)];
+                    client.Receive(sizeBuffer);
 
-                    Bytes Packet = new byte[Bytes.B2P<int>(size)];
+                    int size = Bytes.B2P<int>(sizeBuffer);
+                    Bytes Packet = new byte[size];
+                    //Could break if Bytes returns a new byte[] when casted into byte[]
                     client.ReceiveFrom(Packet, ref tempRemoteEP);
 
                     info.EndPoint = (IPEndPoint)tempRemoteEP;
                     object marshallObj = Packet.ToMarshall();
                     TypeSetter.SendNewDatagramMessage(marshallObj, info);
                 }
-                catch (Exception)
+                catch (Exception e)
                 {
                     PacketLoss?.Invoke(info);
                 }
