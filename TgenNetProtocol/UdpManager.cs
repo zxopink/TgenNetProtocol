@@ -8,17 +8,14 @@ using System.Threading;
 using System.Threading.Tasks;
 using TgenSerializer;
 using LiteNetLib;
+using LiteNetLib.Utils;
 
 namespace TgenNetProtocol
 {
     public class UdpManager : IDisposable
     {
-
-        private Socket client;
-        private Socket Client => client;
-
         internal EventBasedNetListener NetListener { get; private set; }
-        internal NetManager UdpClinet { get; private set; }
+        internal NetManager RUdpClient { get; private set; }
 
         public bool Connected => EndPoint != null;
 
@@ -27,10 +24,6 @@ namespace TgenNetProtocol
 
         public IPEndPoint LocalEP { get; private set; }
         public IPEndPoint EndPoint { get; private set; }
-
-        private bool active = false;
-        /// <summary>Is listening to incoming packets(A thread is on the binded socket), only active if the socket is bound</summary>
-        public bool Active => active && client.IsBound;
 
         public UdpManager() : this(AddressFamily.InterNetwork)
         {
@@ -50,20 +43,6 @@ namespace TgenNetProtocol
             new IPEndPoint(IPAddress.Any, port) :
             new IPEndPoint(IPAddress.IPv6Any, port))
         {
-            /*
-            client = getNewSocket(family);
-
-            IPEndPoint localEndPoint;
-
-            if (family == AddressFamily.InterNetwork)
-                localEndPoint = new IPEndPoint(IPAddress.Any, port);
-
-            else
-                localEndPoint = new IPEndPoint(IPAddress.IPv6Any, port);
-
-            Client.Bind(localEndPoint);
-            LocalEP = localEndPoint;
-            */
         }
         public UdpManager(string address, int port) : this(IPAddress.Parse(address), port)
         {
@@ -76,88 +55,53 @@ namespace TgenNetProtocol
         public UdpManager(IPEndPoint localEP)
         {
             NetListener = new EventBasedNetListener();
-            UdpClinet = new NetManager(NetListener);
+            RUdpClient = new NetManager(NetListener);
 
-
-            client = getNewSocket(localEP.AddressFamily);
-            client.Bind(localEP);
             LocalEP = localEP;
         }
 
         public void Bind(IPEndPoint localEP)
         {
-            client.Bind(localEP);
+
         }
 
         public void Listen()
         {
-            if (Active)
-                return;
-
-            active = true;
-            Thread listener = new Thread(ReadPackets);
-            listener.Start();
+            RUdpClient.Start(LocalEP.Address.MapToIPv4(), LocalEP.Address.MapToIPv6(), LocalEP.Port);
         }
-
-        private void ReadPackets()
+        const string CONN_KEY = "TgenKey";
+        public void Connect(string host, int port, string key = null)
         {
-            while (Active) //While socket is bound
-            {
-                UdpInfo info = new UdpInfo { Receiver = Client };
-                try
-                {
-                    //TODO: make it IPAddress.IPv6Any when the local point family is IPv6
-                    EndPoint tempRemoteEP = new IPEndPoint(IPAddress.Any, 0); //IPv4, Any port
-
-                    byte[] sizeBuffer = new byte[sizeof(int)];
-                    client.Receive(sizeBuffer);
-
-                    int size = Bytes.B2P<int>(sizeBuffer);
-                    Bytes Packet = new byte[size];
-                    //Could break if Bytes returns a new byte[] when casted into byte[]
-                    client.ReceiveFrom(Packet, ref tempRemoteEP);
-
-                    info.EndPoint = (IPEndPoint)tempRemoteEP;
-                    object marshallObj = Packet.ToMarshall();
-                    TypeSetter.SendNewDatagramMessage(marshallObj, info);
-                }
-                catch (Exception e)
-                {
-                    PacketLoss?.Invoke(info);
-                }
-            }
-        }
-
-        public void Connect(string host, int port)
-        {
+            key = key == null ? CONN_KEY : key;
             IPAddress address = IPAddress.Parse(host);
             IPEndPoint endPointIP = new IPEndPoint(address, port);
-            client.Connect(endPointIP);
-            EndPoint = endPointIP;
+            Connect(endPointIP, NetDataWriter.FromString(key));
         }
-        public void Connect(IPAddress address, int port)
+        public void Connect(IPEndPoint iPEndPoint, NetDataWriter dataWriter)
         {
-            IPEndPoint endPointIP = new IPEndPoint(address, port);
-            client.Connect(endPointIP);
-            EndPoint = endPointIP;
-        }
-        public void Connect(IPEndPoint iPEndPoint)
-        {
-            client.Connect(iPEndPoint);
+            RUdpClient.Connect(iPEndPoint, dataWriter);
             EndPoint = iPEndPoint;
         }
 
-        public void Send(object obj)
+        public void Send(object obj, DeliveryMethod deliveryMethod)
         {
             //Will throw an error if not connected to endpoint
             byte[] objGraph = Bytes.ClassToByte(obj);
             Bytes size = objGraph.Length;
-            if (objGraph.Length > ushort.MaxValue)
-                return;
+            //if (objGraph.Length > ushort.MaxValue)
+            //    return;
             //Console.WriteLine($"Size is: {size.Length} and max is: {client.SendBufferSize} is it fine? {size.Length < client.SendBufferSize}");
-            client.Send(size);
-            client.Send(objGraph);
+            RUdpClient.SendToAll(size, deliveryMethod);
         }
+        public void Send(DataWriter obj, DeliveryMethod deliveryMethod)
+        {
+            //if (obj.data.Length > ushort.MaxValue)
+            //    return;
+            RUdpClient.SendToAll(obj.GetData(), deliveryMethod);
+        }
+
+
+        /*
         public void Send(object obj, IPEndPoint endPoint)
         {
             byte[] objGraph = Bytes.ClassToByte(obj);
@@ -170,11 +114,11 @@ namespace TgenNetProtocol
             foreach (IPEndPoint endPoint in endPoints)
                 Send(obj, endPoint);
         }
+        */
 
         public void Close()
         {
-            active = false;
-            Client.Close();
+            RUdpClient.Stop();
         }
 
         /// <summary>
@@ -187,7 +131,7 @@ namespace TgenNetProtocol
 
         public void Dispose()
         {
-            client.Dispose(); //Dispose also close the socket
+            RUdpClient.Stop();
         }
     }
 }
