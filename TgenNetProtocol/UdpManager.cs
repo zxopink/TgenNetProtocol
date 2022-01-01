@@ -7,23 +7,37 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using TgenSerializer;
-using LiteNetLib;
-using LiteNetLib.Utils;
+using RUDPSharp;
 
 namespace TgenNetProtocol
 {
     public class UdpManager : IDisposable
     {
-        internal EventBasedNetListener NetListener { get; private set; }
-        internal NetManager RUdpClient { get; private set; }
+        public bool Connected { get { try { return RUdpClient.EndPoint != null; } catch { return false;} } }
+        public IPEndPoint EndPoint { get { try { return (IPEndPoint)RUdpClient.EndPoint; } catch { return null; } } }
 
-        public bool Connected => EndPoint != null;
-
+        //Received data but failed to Deserialize it(Turn it into runtime object)
         public event UdpEvent PacketLoss;
-        public delegate void UdpEvent(UdpInfo info);
+        public delegate void UdpEvent(UdpInfo info, byte[] data);
+
+        public RUDP<UDPSocket> RUdpClient { get; private set; }
+
+        //Default connection key
+        private const string CONN_KEY = "TgenKey";
+        private string userKey = null;
+        //If changed from null, will deny connections if keys don't match between peers
+        public string ConnectionKey { get => userKey ?? CONN_KEY; set => userKey = value; }
 
         public IPEndPoint LocalEP { get; private set; }
-        public IPEndPoint EndPoint { get; private set; }
+
+        public delegate void DisconnectedFunc(IPEndPoint endPoint);
+        public event DisconnectedFunc DisconnectedEvent;
+
+        public delegate void PendingConnectionFunc(IPEndPoint endPoint, string keyCode, ref bool acceptConn);
+        public event PendingConnectionFunc PendingConnectionEvent;
+
+        public delegate void DataReceivedFunc(IPEndPoint endPoint, byte[] data);
+        public event DataReceivedFunc DataReceivedEvent;
 
         public UdpManager() : this(AddressFamily.InterNetwork)
         {
@@ -54,50 +68,110 @@ namespace TgenNetProtocol
         //Main constructor(Called by all constructors)
         public UdpManager(IPEndPoint localEP)
         {
-            NetListener = new EventBasedNetListener();
-            RUdpClient = new NetManager(NetListener);
+            RUdpClient = new RUDP<UDPSocket>(new UDPSocket("TgenSocket"));
+
+            RUdpClient.ConnetionRequested = IncomingConnection;
+            RUdpClient.DataReceived = DataReceived;
+            RUdpClient.Disconnected = PeerLeft;
 
             LocalEP = localEP;
         }
 
-        public void Bind(IPEndPoint localEP)
+        public void Start()
         {
-
+            RUdpClient.Start(LocalEP.Port);
         }
 
-        public void Listen()
+        /////////////////////////////////////////////////////EVENTS////////////////////////////////////////////////////
+        private void PeerLeft(EndPoint ep)
         {
-            RUdpClient.Start(LocalEP.Address.MapToIPv4(), LocalEP.Address.MapToIPv6(), LocalEP.Port);
+            Console.WriteLine($"{ep.ToString()} has left");
+            DisconnectedEvent?.Invoke((IPEndPoint)ep);
         }
-        const string CONN_KEY = "TgenKey";
-        public void Connect(string host, int port, string key = null)
+        private (bool,string) IncomingConnection(EndPoint ep, byte[] data)
         {
-            key = key == null ? CONN_KEY : key;
-            IPAddress address = IPAddress.Parse(host);
-            IPEndPoint endPointIP = new IPEndPoint(address, port);
-            Connect(endPointIP, NetDataWriter.FromString(key));
-        }
-        public void Connect(IPEndPoint iPEndPoint, NetDataWriter dataWriter)
-        {
-            RUdpClient.Connect(iPEndPoint, dataWriter);
-            EndPoint = iPEndPoint;
+            Console.WriteLine($"{ep} is connecting with data: {Bytes.BytesToStr(data)}");
+
+            string pass = Bytes.BytesToStr(data);
+            bool accept = (ConnectionKey) == pass;
+            PendingConnectionEvent?.Invoke((IPEndPoint)ep, pass, ref accept);
+            if(!accept)
+                Console.WriteLine($"Dropping connection with {ep} for incorrect password\n" +
+                    $"My pass: '{ConnectionKey}' got pass: '{pass}'");
+            return (accept, ConnectionKey); //Accept the incoming client and send back the passcode
         }
 
-        public void Send(object obj, DeliveryMethod deliveryMethod)
+        private bool DataReceived(EndPoint ep, byte[] data)
         {
-            //Will throw an error if not connected to endpoint
+            var reader = new DataReader(data);
+            Type type = reader.TryGetType();
+
+            UdpInfo info = new UdpInfo((IPEndPoint)ep);
+
+            DataReceivedEvent?.Invoke((IPEndPoint)ep, data);
+
+            try
+            {
+                if (type == null) //Failed to get type
+                {
+                    var obj = Bytes.ByteToClass(reader.GetRemainingBytes());
+                    TypeSetter.SendNewDatagramMessage(obj, info);
+                    return true;
+                }
+
+                else if (type.IsAssignableFrom(typeof(ISerializable)))
+                {
+                    var formatObj = (ISerializable)Activator.CreateInstance(type);
+                    formatObj.Deserialize(reader);
+                    TypeSetter.SendNewDatagramMessage(formatObj, info);
+                    return true;
+                }
+            }
+            catch //Failed to Deserialize the object, drop packet
+            {
+                PacketLoss?.Invoke(info, data);
+                return false;
+            }
+
+            return false; //Not Serializeable object, shouldn't reach here 
+            //Note: The return value shouldn't matter, it's a failed/succeeded state for me
+        }
+
+        public bool Connect(string host, int port) =>
+            RUdpClient.Connect(host, port, ConnectionKey);
+        public bool Connect(string host, int port, string key) =>
+            RUdpClient.Connect(host, port, key);
+
+        public bool Connect(IPAddress address, int port) =>
+            Connect(address.ToString(), port);
+        public bool Connect(IPAddress address, int port, string key) =>
+            Connect(address.ToString(), port, key);
+
+        public bool Connect(IPEndPoint iPEndPoint) =>
+            Connect(iPEndPoint.Address, iPEndPoint.Port);
+        public bool Connect(IPEndPoint iPEndPoint, string key) =>
+            Connect(iPEndPoint.Address, iPEndPoint.Port, key);
+
+        public void Send(object obj, Channel deliveryMethod)
+        {
             byte[] objGraph = Bytes.ClassToByte(obj);
-            Bytes size = objGraph.Length;
-            //if (objGraph.Length > ushort.MaxValue)
-            //    return;
-            //Console.WriteLine($"Size is: {size.Length} and max is: {client.SendBufferSize} is it fine? {size.Length < client.SendBufferSize}");
-            RUdpClient.SendToAll(size, deliveryMethod);
+            Send(objGraph, deliveryMethod);
         }
-        public void Send(DataWriter obj, DeliveryMethod deliveryMethod)
+        public void Send(ISerializable obj, Channel deliveryMethod)
         {
-            //if (obj.data.Length > ushort.MaxValue)
-            //    return;
-            RUdpClient.SendToAll(obj.GetData(), deliveryMethod);
+            //Makes a DataWriter with the object's type
+            var writer = new DataWriter(obj);
+            obj.Serialize(writer);
+            Send(writer, deliveryMethod);
+        }
+        public void Send(DataWriter obj, Channel deliveryMethod)
+        {
+            Send(obj.GetData(), deliveryMethod);
+        }
+
+        public void Send(byte[] data, Channel deliveryMethod)
+        {
+            RUdpClient.SendToAll(deliveryMethod, data);
         }
 
 
@@ -118,7 +192,7 @@ namespace TgenNetProtocol
 
         public void Close()
         {
-            RUdpClient.Stop();
+            RUdpClient.Disconnect();
         }
 
         /// <summary>
@@ -131,7 +205,8 @@ namespace TgenNetProtocol
 
         public void Dispose()
         {
-            RUdpClient.Stop();
+            Close();
+            RUdpClient.Dispose();
         }
     }
 }

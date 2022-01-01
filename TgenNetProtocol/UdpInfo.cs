@@ -10,12 +10,10 @@ namespace TgenNetProtocol
 {
     public struct UdpInfo : INetInfo
     {
-        public Socket Receiver { get; set; }
         public IPEndPoint EndPoint { get; set; }
-        public UdpInfo(IPEndPoint endPoint, Socket receiver)
+        public UdpInfo(IPEndPoint endPoint)
         {
             EndPoint = endPoint;
-            Receiver = receiver;
         }
         public bool Equals(INetInfo clientData)
         {

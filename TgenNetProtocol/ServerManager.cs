@@ -102,7 +102,7 @@ namespace TgenNetProtocol
             TgenLog.Log("Accepting new socket!");
             Socket newClientListener = listener.Accept();
 
-            newClientListener.NoDelay = true; //disables delay which occures when sending small chunks or data
+            newClientListener.NoDelay = true; //disables delay which occures when sending small chunks of data
 
             ClientInfo client = new ClientInfo(newClientListener, clientsCount);
             clientsCount++;
