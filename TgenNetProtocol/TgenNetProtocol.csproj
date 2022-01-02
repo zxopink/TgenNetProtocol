@@ -5,14 +5,8 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\..\TgenSerializer\TgenSerializer\TgenSerializer.csproj" />
     <ProjectReference Include="..\RUDPSharp\RUDPSharp.csproj" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Reference Include="TgenSerializer">
-      <HintPath>..\..\TgenSerializer\TgenSerializer\bin\Release\netstandard2.0\TgenSerializer.dll</HintPath>
-      <Private>true</Private>
-    </Reference>
   </ItemGroup>
 
 </Project>

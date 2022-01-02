@@ -12,7 +12,7 @@ namespace RUDPSharp
         public TimeSpan PacketExpire {get ;set; } = TimeSpan.FromMilliseconds(500);
         public ReliableInOrderChannel(int maxBufferSize = 100) : base(maxBufferSize)
         {
-
+            
         }
 
         protected override bool CheckSequence(int packet, int sequence)
