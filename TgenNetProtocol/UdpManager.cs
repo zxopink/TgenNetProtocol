@@ -95,7 +95,6 @@ namespace TgenNetProtocol
             Console.WriteLine($"{ep.ToString()} has left");
             DisconnectedEvent?.Invoke((IPEndPoint)ep);
         }
-        ConcurrentDictionary<DateTime, byte[]> MTUPackets;
         private (bool, string) IncomingConnection(EndPoint ep, byte[] data)
         {
             Console.WriteLine($"{ep} is connecting with data: {Bytes.BytesToStr(data)}");
@@ -110,39 +109,60 @@ namespace TgenNetProtocol
             return (accept, ConnectionKey); //Accept the incoming client and send back the passcode
         }
 
+        ConcurrentDictionary<DateTime, MTUPacket> MTUPackets = new ConcurrentDictionary<DateTime, MTUPacket>();
         private bool DataReceived(EndPoint ep, byte[] data)
         {
-            var reader = new DataReader(data);
-            PacketFlags flags = (PacketFlags)reader.GetByte();
-            UdpInfo info = new UdpInfo((IPEndPoint)ep);
-
-            DataReceivedEvent?.Invoke((IPEndPoint)ep, data);
-
-            switch (flags)
-            {
-                case PacketFlags.None:
-                    break;
-                case PacketFlags.MTU:
-
-                    return true;
-                    break;
-                default:
-                    break;
-            }
-
             try
             {
-                var obj = Bytes.ByteToClass(reader.GetRemainingBytes());
-                TypeSetter.SendNewDatagramMessage(obj, info);
-                return true;
-            }
-            catch (Exception e) //Failed to Deserialize the object, drop packet
-            {
-                PacketLoss?.Invoke(info, data);
-                return false;
-                //Not Serializeable object, shouldn't reach here 
-            }
+                var reader = new DataReader(data);
+                PacketFlags flags = (PacketFlags)reader.GetByte();
+                UdpInfo info = new UdpInfo((IPEndPoint)ep);
 
+                DataReceivedEvent?.Invoke((IPEndPoint)ep, data);
+                if (flags == PacketFlags.MTU)
+                {
+                    Console.WriteLine("Got packet");
+                    var packetTime = new DateTime(reader.GetInt64());
+                    if (!MTUPackets.TryGetValue(packetTime, out MTUPacket packet))
+                    {
+                        var size = reader.GetByte();
+                        packet = new MTUPacket(size);
+                        MTUPackets.TryAdd(packetTime, packet);
+                    }
+                    else
+                    {
+                        packet.Append(data);
+                    }
+
+                    if (!packet.IsComplete)
+                        return true;
+
+                    MTUPackets.TryRemove(packetTime, out packet);
+                    Console.WriteLine("large packet is complete! ");
+                    var obj = Bytes.ByteToClass(reader.GetBytes());
+                    TypeSetter.SendNewDatagramMessage(obj, info);
+                    return true;
+                }
+
+                try
+                {
+                    var obj = Bytes.ByteToClass(reader.GetBytes());
+                    TypeSetter.SendNewDatagramMessage(obj, info);
+                    return true;
+                }
+                catch (Exception e) //Failed to Deserialize the object, drop packet
+                {
+                    PacketLoss?.Invoke(info, data);
+                    return false;
+                    //Not Serializeable object, shouldn't reach here 
+                }
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e.Message);
+                Console.WriteLine(e.StackTrace);
+            }
+            return false;
             //Note: The return value shouldn't matter, it's a failed/succeeded state for me
         }
 
@@ -186,9 +206,15 @@ namespace TgenNetProtocol
                 flags |= PacketFlags.MTU;
 
                 int fragSize = UDPSocket.BufferSize - 100;
-                int fragments = data.Length / fragSize;
+                byte fragments = (byte)(data.Length / fragSize);
                 if (fragments > byte.MaxValue)
                     throw new SocketException((int)SocketError.MessageSize); //Bigger than 2GBs
+
+                DataWriter firstPacket = new DataWriter();
+                firstPacket.WriteBytes((byte)flags);
+                firstPacket.WriteBytes(packetTime);
+                firstPacket.WriteBytes(fragments);
+                flag &= RUdpClient.SendToAll(Channel.ReliableInOrder, firstPacket.GetData());
 
                 for (int i = 0; i < fragments; i++)
                 {
@@ -200,12 +226,14 @@ namespace TgenNetProtocol
                     byte[] buffer = new byte[fragSize];
                     Buffer.BlockCopy(data, fragSize * i, buffer, 0, fragSize);
                     packet.WriteBytes(buffer);
-                    flag &= RUdpClient.SendToAll(deliveryMethod, packet.GetData());
+                    flag &= RUdpClient.SendToAll(Channel.ReliableInOrder, packet.GetData());
                 }
                 return flag;
             }
-
-            return RUdpClient.SendToAll(deliveryMethod, data);
+            DataWriter writer = new DataWriter();
+            writer.WriteBytes((byte)flags);
+            writer.WriteBytes(data);
+            return RUdpClient.SendToAll(deliveryMethod, writer.GetData());
         }
 
         public bool Send(EndPoint ep, object obj, Channel deliveryMethod = Channel.ReliableInOrder)

@@ -5,8 +5,8 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\..\RUDPSharp\RUDPSharp\RUDPSharp.csproj" />
     <ProjectReference Include="..\..\TgenSerializer\TgenSerializer\TgenSerializer.csproj" />
-    <ProjectReference Include="..\RUDPSharp\RUDPSharp.csproj" />
   </ItemGroup>
 
 </Project>
