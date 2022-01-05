@@ -181,14 +181,6 @@ namespace TgenNetProtocol
             RUdpClient.Stop();
         }
 
-        /// <summary>
-        /// Udp can only be of family adress InterNetwork (IPv4) or InterNetworkV6 (IPv6)
-        /// </summary>
-        private Socket getNewSocket(AddressFamily family = AddressFamily.InterNetwork)
-        {
-            return new Socket(family, SocketType.Dgram, ProtocolType.Udp);
-        }
-
         public void Dispose()
         {
             Close();
