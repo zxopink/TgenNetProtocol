@@ -9,7 +9,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "RdatagramProtocol", "Rdatag
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TgenWinForms", "TgenWinForms\TgenWinForms.csproj", "{FC16C3D5-6370-4597-B9EE-0B0DD0C6EDE9}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "RUDPSharp", "..\RUDPSharp\RUDPSharp\RUDPSharp.csproj", "{96DF367D-0E2B-42E0-9441-EDA7C7609896}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "LiteNetLib", "LiteNetLib\LiteNetLib.csproj", "{2F9EACC5-9092-492F-8097-2969438EEC41}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -29,10 +29,10 @@ Global
 		{FC16C3D5-6370-4597-B9EE-0B0DD0C6EDE9}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{FC16C3D5-6370-4597-B9EE-0B0DD0C6EDE9}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{FC16C3D5-6370-4597-B9EE-0B0DD0C6EDE9}.Release|Any CPU.Build.0 = Release|Any CPU
-		{96DF367D-0E2B-42E0-9441-EDA7C7609896}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{96DF367D-0E2B-42E0-9441-EDA7C7609896}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{96DF367D-0E2B-42E0-9441-EDA7C7609896}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{96DF367D-0E2B-42E0-9441-EDA7C7609896}.Release|Any CPU.Build.0 = Release|Any CPU
+		{2F9EACC5-9092-492F-8097-2969438EEC41}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{2F9EACC5-9092-492F-8097-2969438EEC41}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{2F9EACC5-9092-492F-8097-2969438EEC41}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{2F9EACC5-9092-492F-8097-2969438EEC41}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

@@ -1,12 +1,12 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFramework>netstandard2.0</TargetFramework>
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\RUDPSharp\RUDPSharp\RUDPSharp.csproj" />
     <ProjectReference Include="..\..\TgenSerializer\TgenSerializer\TgenSerializer.csproj" />
+    <ProjectReference Include="..\LiteNetLib\LiteNetLib.csproj" />
   </ItemGroup>
 
 </Project>

@@ -21,9 +21,6 @@ namespace TgenNetProtocol
         /// <param name="clientInfo">The client who sent the info</param>
         public static void SendNewServerMessage(object message, ClientInfo clientInfo)
         {
-            List<object> objectsToSend = new List<object>();
-            objectsToSend.Add(message);
-
             for (int i = 0; i < networkObjects.Count; i++)
             {
                 INetworkObject networkObject = networkObjects[i];
@@ -33,7 +30,7 @@ namespace TgenNetProtocol
                 // get method by name,  or loop through all methods
                 // looking for an attribute
                 var methodsInfo = networkObject.ServerMethods;
-                NetworkObjHandler(clientInfo, methodsInfo, message, networkObject, objectsToSend);
+                NetworkObjHandler(clientInfo, methodsInfo, message, networkObject);
             }
             CleanNullObjects();
         }
@@ -47,9 +44,6 @@ namespace TgenNetProtocol
         /// <param name="message">The sent object (Payload)</param>
         public static void SendNewClientMessage(object message)
         {
-            List<object> objectsToSend = new List<object>();
-            objectsToSend.Add(message);
-
             for (int i = 0; i < networkObjects.Count; i++)
             {
                 INetworkObject networkObject = networkObjects[i];
@@ -60,7 +54,7 @@ namespace TgenNetProtocol
                 // looking for an attribute
                 var methodsInfo = networkObject.ClientMethods;
 
-                NetworkObjHandler(methodsInfo, message, networkObject, objectsToSend);
+                NetworkObjHandler(methodsInfo, message, networkObject);
             }
             CleanNullObjects();
         }
@@ -75,9 +69,6 @@ namespace TgenNetProtocol
         /// <param name="packetData">The client who sent the info</param>
         public static void SendNewDatagramMessage(object message, UdpInfo packetData)
         {
-            List<object> objectsToSend = new List<object>();
-            objectsToSend.Add(message);
-
             for (int i = 0; i < networkObjects.Count; i++)
             {
                 INetworkObject networkObject = networkObjects[i];
@@ -87,36 +78,30 @@ namespace TgenNetProtocol
                 // get method by name,  or loop through all methods
                 // looking for an attribute
                 var methodsInfo = networkObject.DgramMethods;
-                NetworkObjHandler(packetData, methodsInfo, message, networkObject, objectsToSend);
+                NetworkObjHandler(packetData, methodsInfo, message, networkObject);
             }
             CleanNullObjects();
         }
         #endregion
 
-        private static void NetworkObjHandler(INetInfo netInfo, List<MethodData> methodsInfo, object message, INetworkObject networkObject, List<object> objectsToSend)
+        private static void NetworkObjHandler(INetInfo netInfo, List<MethodData> methodsInfo, object message, INetworkObject networkObject)
         {
             foreach (var method in methodsInfo)
             {
                 if (method.ParameterType.IsAssignableFrom(message.GetType()))
                 {
                     if (method.HasClientData)
-                    {
-                        objectsToSend.Add(netInfo);
-                        networkObject.InvokeNetworkMethods(method, objectsToSend.ToArray());
-                        objectsToSend.Remove(netInfo);
-                    }
+                        networkObject.InvokeNetworkMethods(method, new object[] { message, netInfo });
                     else
-                    {
-                        networkObject.InvokeNetworkMethods(method, objectsToSend.ToArray());
-                    }
+                        networkObject.InvokeNetworkMethods(method, new object[] { message });
                 }
             }
         }
-        private static void NetworkObjHandler(List<MethodData> methodsInfo, object message, INetworkObject networkObject, List<object> objectsToSend)
+        private static void NetworkObjHandler(List<MethodData> methodsInfo, object message, INetworkObject networkObject)
         {
             foreach (var method in methodsInfo)
                 if (method.ParameterType.IsAssignableFrom(message.GetType()))
-                    networkObject.InvokeNetworkMethods(method, objectsToSend.ToArray());
+                    networkObject.InvokeNetworkMethods(method, new object[] { message });
         }
 
         private static void CleanNullObjects() =>

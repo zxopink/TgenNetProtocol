@@ -24,7 +24,8 @@ namespace TgenNetProtocol
 
         public void SetUpMethods()
         {
-            MethodInfo[] methods = GetType().GetMethods();
+            //Gets public/private/(public inherited) methods
+            MethodInfo[] methods = GetType().GetMethods(BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Instance | BindingFlags.FlattenHierarchy | BindingFlags.InvokeMethod);
             IEnumerable<MethodInfo> serverActions = methods.Where(x => x.GetCustomAttributes(typeof(ServerReceiverAttribute), false).FirstOrDefault() != null);
             IEnumerable<MethodInfo> clientActions = methods.Where(x => x.GetCustomAttributes(typeof(ClientReceiverAttribute), false).FirstOrDefault() != null);
             IEnumerable<MethodInfo> dgramAction = methods.Where(x => x.GetCustomAttributes(typeof(DgramReceiverAttribute), false).FirstOrDefault() != null);
@@ -32,6 +33,19 @@ namespace TgenNetProtocol
             ServerMethods = GetMethodsData(serverActions);
             ClientMethods = GetMethodsData(clientActions);
             DgramMethods = GetMethodsData(dgramAction);
+        }
+
+
+        //Might be slow, don't use yet
+        /// <summary>Recursive search for type's method, only way to get all methods in object (including private inherited methods)</summary>
+        public static IEnumerable<MethodInfo> GetMethods(Type type)
+        {
+            IEnumerable<MethodInfo> methods = type.GetMethods(BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Instance);
+
+            if (type.BaseType != null)
+                methods = methods.Concat(GetMethods(type.BaseType));
+
+            return methods;
         }
 
         private List<MethodData> GetMethodsData(IEnumerable<MethodInfo> methods)
