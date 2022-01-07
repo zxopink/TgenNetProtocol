@@ -22,15 +22,11 @@ namespace TgenNetProtocol
             Console.WriteLine("Received message/userData?: " + userData);
         }
 
-        public void OnNetworkError(IPEndPoint endPoint, SocketError socketError)
-        {
-            Console.WriteLine($"Network error: {socketError}, with: {endPoint}");
-        }
+        public void OnNetworkError(IPEndPoint endPoint, SocketError socketError) =>
+            NetworkErrorEvent?.Invoke(endPoint, socketError);
 
-        public void OnNetworkLatencyUpdate(NetPeer peer, int latency)
-        {
-
-        }
+        public void OnNetworkLatencyUpdate(NetPeer peer, int latency) =>
+            NetworkLatencyUpdateEvent?.Invoke(peer, latency);
 
         public void OnNetworkReceive(NetPeer peer, NetPacketReader reader, byte channelNumber, DeliveryMethod deliveryMethod)
         {
@@ -48,7 +44,6 @@ namespace TgenNetProtocol
             {
                 UdpInfo info = new UdpInfo(endPoint);
                 var obj = Bytes.ByteToClass(data);
-                Console.WriteLine("got type on: " + obj.GetType());
                 TypeSetter.SendNewDatagramMessage(obj, info);
             }
             catch (Exception e)
@@ -65,9 +60,9 @@ namespace TgenNetProtocol
         }
 
         public void OnPeerConnected(NetPeer peer) =>
-            ConnectedEvent?.Invoke(peer);
+            PeerConnectedEvent?.Invoke(peer);
 
         public void OnPeerDisconnected(NetPeer peer, DisconnectInfo disconnectInfo) =>
-            DisconnectedEvent?.Invoke(peer, disconnectInfo);
+            PeerDisconnectedEvent?.Invoke(peer, disconnectInfo);
     }
 }

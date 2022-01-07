@@ -23,6 +23,7 @@ namespace TgenNetProtocol
         private IPEndPoint _localEP { get; set; }
 
         public bool NatPunchEnabled { get => RUdpClient.NatPunchEnabled; set => RUdpClient.NatPunchEnabled = value; }
+        public int DisconnectTimeout { get => RUdpClient.DisconnectTimeout; set => RUdpClient.DisconnectTimeout = value; }
         public NatPunchModule NatPunchModule { get => RUdpClient.NatPunchModule; }
 
         //Received data but failed to Deserialize it(Turn it into runtime object)
@@ -38,17 +39,20 @@ namespace TgenNetProtocol
         public string ConnectionKey { get => userKey ?? CONN_KEY; set => userKey = value; }
 
         public delegate void DisconnectedFunc(NetPeer peer, DisconnectInfo disconnectInfo);
-        public event DisconnectedFunc DisconnectedEvent;
+        public event DisconnectedFunc PeerDisconnectedEvent;
 
         public delegate void PendingConnectionFunc(ConnectionRequest request);
-        public event PendingConnectionFunc PendingConnectionEvent;
+        public event PendingConnectionFunc ConnectionRequestEvent;
+
+        public event Action<NetPeer, int> NetworkLatencyUpdateEvent;
+        public event Action<IPEndPoint, SocketError> NetworkErrorEvent;
 
         public delegate void ConnectedFunc(NetPeer peer);
         ///<summary>Fires when a pending connection was accepted</summary>
-        public event ConnectedFunc ConnectedEvent;
+        public event ConnectedFunc PeerConnectedEvent;
 
         public delegate void DataReceivedFunc(IPEndPoint endPoint, byte[] data);
-        public event DataReceivedFunc DataReceivedEvent;
+        public event DataReceivedFunc OnDataReceived;
 
         public UdpManager() : this(AddressFamily.InterNetwork)
         {
