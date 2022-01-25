@@ -4,12 +4,13 @@ using System.Net.Sockets;
 using System.Threading;
 using System.Net;
 using TgenSerializer;
+using System.Threading.Tasks;
 
 namespace TgenNetProtocol
 {
     public class ServerManager : IDisposable
     {
-        private Thread clientListenerThread;
+        private Task pollEventsTask;
 
         public delegate void NetworkActivity(ClientInfo client);
         public event NetworkActivity ClientDisconnectedEvent;
@@ -117,9 +118,9 @@ namespace TgenNetProtocol
         {
             if (client.client.IsControlled) return;
             NetworkStream stm = client;
-            if (!stm.DataAvailable) return;
             try
             {
+                if (!stm.DataAvailable) return;
                 object message = Formatter.Deserialize(stm);
                 TypeSetter.SendNewServerMessage(message, client);
             }
@@ -132,21 +133,30 @@ namespace TgenNetProtocol
             }
         }
 
-        private void ManageServer()
+        private void ManageServer(object obj)
         {
+            int millisecondsTimeOutPerPoll = (int)obj;
             while (active)
             {
-                while (listener.Poll(0, SelectMode.SelectRead))//Equivelent to listener.Pending() (TcpListener.Pending())
-                    AcceptIncomingClient(); //Method also adds the client to the clients list
+                //Make this function an automatic seperated thread poll events 
+                //And take int milliseconds as an argument for a thread.sleep() to not overload the CPU
+                PollEvents();
+                Thread.Sleep(millisecondsTimeOutPerPoll);
+            }
+        }
 
-                //Amount of clients can change during tick
-                //int currentClients = AmountOfClients; //this value holds the connected clients during the tick
-                for (int i = 0; i < AmountOfClients; i++) //AmountOfClients = length of clients list
-                {
-                    ClientInfo client = clients[i];
-                    if (client) HandleClientPacket(client);
-                    else { DropClient(client); }
-                }
+        public void PollEvents()
+        {
+            while (listener.Poll(0, SelectMode.SelectRead))//Equivelent to listener.Pending() (TcpListener.Pending())
+                AcceptIncomingClient(); //Method also adds the client to the clients list
+
+            //Amount of clients can change during tick
+            //int currentClients = AmountOfClients; //this value holds the connected clients during the tick
+            for (int i = 0; i < AmountOfClients; i++) //AmountOfClients = length of clients list
+            {
+                ClientInfo client = clients[i];
+                if (client) HandleClientPacket(client);
+                else { DropClient(client); }
             }
         }
 
@@ -261,11 +271,22 @@ namespace TgenNetProtocol
                 active = true;
                 listener = getNewListenSocket;
                 listener.Listen(backlog);
-                clientListenerThread = new Thread(ManageServer);
-                clientListenerThread.Start();
             }
             else
                 TgenLog.Log("The listener is already open!");
+        }
+
+        /// <summary>
+        /// Opens a task that automatically poll events
+        /// </summary>
+        /// <param name="millisecondsTimeOutPerPoll">Time to sleep between each poll</param>
+        /// <returns>CancellationTokenSource, to cancel the task at any time</returns>
+        public CancellationTokenSource ManagePollEvents(int millisecondsTimeOutPerPoll)
+        {
+            CancellationTokenSource tokenSource = new CancellationTokenSource();
+            pollEventsTask = new Task(ManageServer, millisecondsTimeOutPerPoll, tokenSource.Token);
+
+            return tokenSource;
         }
 
         /// <summary>

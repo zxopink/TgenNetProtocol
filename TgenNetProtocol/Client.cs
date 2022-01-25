@@ -5,7 +5,7 @@ using System.Threading.Tasks;
 
 namespace TgenNetProtocol
 {
-    public class Client
+    public class Client : IDisposable
     {
         private Socket client;
         public Socket Socket { get => client; }
@@ -95,6 +95,11 @@ namespace TgenNetProtocol
             }
             else
                 throw new Exception("The given controlInstance does not fit the taken one");
+        }
+
+        public void Dispose()
+        {
+            Close();
         }
 
         public static implicit operator bool(Client client) => client.IsActive;
