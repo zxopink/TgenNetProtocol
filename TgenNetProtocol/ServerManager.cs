@@ -11,17 +11,24 @@ namespace TgenNetProtocol
     public class ServerManager : IDisposable
     {
         private Task pollEventsTask;
+        private CancellationTokenSource cancellationToken;
 
         public delegate void NetworkActivity(ClientInfo client);
         public event NetworkActivity ClientDisconnectedEvent;
         public event NetworkActivity ClientConnectedEvent;
+
+        /// <param name="data">Client data when connecting</param>
+        /// <param name="accept">Whether to accept the connection or not, accept is true if data and server password match</param>
+        public delegate void RequestPending(ClientInfo info, byte[] data, ref bool accept);
+        public event RequestPending ClientPendingEvent;
+        public event NetworkActivity ClientDeclineEvent;
         private List<ClientInfo> clients = new List<ClientInfo>();
         private Socket listener;
         private readonly bool dualMode; //NEW VAR
 
         private Formatter formatter;
         private readonly IPEndPoint localEP; //local EndPoint
-        public Formatter Formatter { get => formatter; }
+        public Formatter Formatter { get => formatter; set => formatter = value; }
         //private bool listen = false; //made to control the listening thread
 
         public ServerManager(int port)
@@ -71,6 +78,16 @@ namespace TgenNetProtocol
         public AddressFamily AddressFamily
         { get { return localEP.AddressFamily; } }
 
+        public const int PASSKEY_TIMEOUT = 5000;
+        private byte[] passKey;
+        public string PassKeyStr { 
+            get => passKey != null ? Bytes.BytesToStr(passKey) : null; 
+            set => passKey = value != null ? Bytes.StrToBytes(value) : null;
+        }
+        /// <summary> Key to accept incoming connections, can be set as string by `PassKeyStr` property.
+        /// If set to null, every connection will be accepted </summary>
+        public byte[] PassKey { get => passKey; set => passKey = value; }
+
         public string LocalIp
         {
             get
@@ -106,12 +123,69 @@ namespace TgenNetProtocol
             newClientListener.NoDelay = true; //disables delay which occures when sending small chunks of data
 
             ClientInfo client = new ClientInfo(newClientListener, clientsCount);
-            clientsCount++;
-            clients.Add(client);
 
-            ClientConnectedEvent?.Invoke(client);
+            Task<bool> passCheck = CheckPass(client);
+            checkPassList.Add((passCheck, client));
 
             return client;
+        }
+
+        private void AddApprovedClients((Task<bool> passCheck, ClientInfo clientInfo) data)
+        {
+            Task<bool> check = data.passCheck;
+            if (!check.IsCompleted)
+                return;
+
+            checkPassList.Remove(data);
+
+            ClientInfo info = data.clientInfo;
+            bool approved = check.Result;
+            if(!approved)
+            {
+                ClientDeclineEvent?.Invoke(info);
+                info.client.Socket.Send(new byte[] { 0 /*FAILED*/});
+                info.client.Close();
+                return;
+            }
+
+            info.client.Socket.Send(new byte[] { 200 /*200 OK*/});
+
+            clientsCount++;
+            clients.Add(data.clientInfo);
+
+            ClientConnectedEvent?.Invoke(data.clientInfo);
+        }
+
+        List<(Task<bool> passCheck, ClientInfo client)> checkPassList = new List<(Task<bool>, ClientInfo)>();
+        public async Task<bool> CheckPass(ClientInfo info)
+        {
+            if (passKey == null)
+                return true;
+
+            Socket s = info.client.Socket;
+
+            bool result = false;
+            ArraySegment<byte> seg = new ArraySegment<byte>(new byte[passKey.Length]);
+            Task<int> readPass = s.ReceiveAsync(seg, SocketFlags.None);
+            if (await Task.WhenAny(readPass, Task.Delay(PASSKEY_TIMEOUT)) == readPass)
+            {
+                // task completed within timeout
+                bool flag = true;
+                byte[] packet = seg.Array;
+                for (int i = 0; i < passKey.Length; i++)
+                    if (passKey[i] != packet[i])
+                        flag = false; //Password wrong
+
+                result = flag; //Password right if flag is true
+            }
+            else
+            {
+                // timeout logic
+                result = false;
+            }
+
+            ClientPendingEvent?.Invoke(info, seg.Array, ref result); //`result` can be changed by event
+            return result;
         }
 
         private void HandleClientPacket(ClientInfo client)
@@ -133,22 +207,13 @@ namespace TgenNetProtocol
             }
         }
 
-        private void ManageServer(object obj)
-        {
-            int millisecondsTimeOutPerPoll = (int)obj;
-            while (active)
-            {
-                //Make this function an automatic seperated thread poll events 
-                //And take int milliseconds as an argument for a thread.sleep() to not overload the CPU
-                PollEvents();
-                Thread.Sleep(millisecondsTimeOutPerPoll);
-            }
-        }
-
         public void PollEvents()
         {
             while (listener.Poll(0, SelectMode.SelectRead))//Equivelent to listener.Pending() (TcpListener.Pending())
                 AcceptIncomingClient(); //Method also adds the client to the clients list
+
+            for (int i = checkPassList.Count - 1; i >= 0; i--)
+                AddApprovedClients(checkPassList[i]);
 
             //Amount of clients can change during tick
             //int currentClients = AmountOfClients; //this value holds the connected clients during the tick
@@ -157,6 +222,18 @@ namespace TgenNetProtocol
                 ClientInfo client = clients[i];
                 if (client) HandleClientPacket(client);
                 else { DropClient(client); }
+            }
+        }
+
+
+        private void ManageServer(int millisecondsTimeOutPerPoll, CancellationToken token)
+        {
+            while (active && !token.IsCancellationRequested)
+            {
+                //Make this function an automatic seperated thread poll events 
+                //And take int milliseconds as an argument for a thread.sleep() to not overload the CPU
+                PollEvents();
+                Thread.Sleep(millisecondsTimeOutPerPoll);
             }
         }
 
@@ -283,10 +360,14 @@ namespace TgenNetProtocol
         /// <returns>CancellationTokenSource, to cancel the task at any time</returns>
         public CancellationTokenSource ManagePollEvents(int millisecondsTimeOutPerPoll)
         {
-            CancellationTokenSource tokenSource = new CancellationTokenSource();
-            pollEventsTask = new Task(ManageServer, millisecondsTimeOutPerPoll, tokenSource.Token);
+            if (pollEventsTask != null)
+                return cancellationToken;
 
-            return tokenSource;
+            cancellationToken = new CancellationTokenSource();
+            pollEventsTask = new Task(() => ManageServer(millisecondsTimeOutPerPoll, cancellationToken.Token), cancellationToken.Token);
+            pollEventsTask.Start();
+
+            return cancellationToken;
         }
 
         /// <summary>

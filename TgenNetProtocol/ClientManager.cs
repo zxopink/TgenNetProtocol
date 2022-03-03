@@ -9,6 +9,9 @@ namespace TgenNetProtocol
 {
     public class ClientManager : IDisposable
     {
+        private Task pollEventsTask;
+        private CancellationTokenSource cancellationToken;
+
         private Client client;
         public Client Client { get => client; }
         private Thread MessageListener;
@@ -79,13 +82,26 @@ namespace TgenNetProtocol
         public bool makeAttempts = false;
         int attemptCounter = 0;
         int maxAttemptCount = 4;
+
         /// <summary>
         /// Connects the client to the server based on the given Ip and Port
         /// </summary>
         /// <param name="ip">The server Ip</param>
         /// <param name="port">The port</param>
         /// <returns>if connected successfully returns true, else false</returns>
-        public bool Connect(string ip, int port)
+        public bool Connect(string ip, int port) =>
+            Connect(ip, port, data: null);
+
+        public bool Connect(string ip, int port, string passKey) =>
+            Connect(ip, port, Bytes.StrToBytes(passKey));
+
+        /// <summary>
+        /// Connects the client to the server based on the given Ip and Port
+        /// </summary>
+        /// <param name="ip">The server Ip</param>
+        /// <param name="port">The port</param>
+        /// <returns>if connected successfully returns true, else false</returns>
+        public bool Connect(string ip, int port, byte[] data)
         {
             if (client)
             {
@@ -97,8 +113,18 @@ namespace TgenNetProtocol
             {
                 client.Connect(ip, port);
 
-                MessageListener = new Thread(ListenToIncomingMessages);
-                MessageListener.Start();
+                if(data != null)
+                    client.Socket.Send(data);
+
+                int timeout = client.Socket.ReceiveTimeout;
+                client.Socket.ReceiveTimeout = 5000;
+
+                var result = new byte[1];
+                client.Socket.Receive(result);
+                if (result[0] != 200)
+                    throw new SocketException((int)SocketError.ConnectionRefused);
+
+                client.Socket.ReceiveTimeout = timeout;
                 attemptCounter = 0;
                 OnConnect?.Invoke();
                 return true;
@@ -106,6 +132,7 @@ namespace TgenNetProtocol
             catch (SocketException e)
             {
                 TgenLog.Log(e.ToString());
+                Close();
 
                 if (!makeAttempts)
                     return false;
@@ -123,43 +150,14 @@ namespace TgenNetProtocol
             }
         }
 
-        public async Task<bool> ConnectAsync(string ip, int port)
-        {
-            if (client)
-            {
-                TgenLog.Log("Client is already connected to a server!");
-                return true;
-            }
+        public async Task<bool> ConnectAsync(string ip, int port) =>
+            await Task.Run( () => { return Connect(ip, port); } );
 
-            try
-            {
-                await client.ConnectAsync(ip, port);
+        public async Task<bool> ConnectAsync(string ip, int port, string passKey) =>
+            await Task.Run(() => { return Connect(ip, port, Bytes.StrToBytes(passKey)); });
 
-                MessageListener = new Thread(ListenToIncomingMessages);
-                MessageListener.Start();
-                attemptCounter = 0;
-                OnConnect?.Invoke();
-                return true;
-            }
-            catch (SocketException e)
-            {
-                TgenLog.Log(e.ToString());
-
-                if (!makeAttempts)
-                    return false;
-
-                attemptCounter++;
-                Console.WriteLine("Attempt number " + attemptCounter + " to connect the server");
-                if (attemptCounter == maxAttemptCount)
-                {
-                    attemptCounter = 0;
-                    Console.WriteLine("Was not able to connect the server after " + maxAttemptCount + " attempts");
-                    return false;
-                }
-                else
-                    return await ConnectAsync(ip, port);
-            }
-        }
+        public async Task<bool> ConnectAsync(string ip, int port, byte[] data) =>
+            await Task.Run(() => { return Connect(ip, port, data); });
 
         //TODO: make a proper binding
         public void Bind(IPEndPoint localEndPoint)
@@ -187,45 +185,66 @@ namespace TgenNetProtocol
             catch (Exception e) //Usually gets thrown when the server aborted/kicked the client
             {
                 Close();
+                OnDisconnect?.Invoke();
                 TgenLog.Log(e.ToString());
                 if (throwOnError)
                     throw e;
             }
         }
 
-        private void ListenToIncomingMessages()
+        public void PollEvents()
         {
+            if (!client) //If not connected
+                return;
             try
             {
-                NetworkStream stm = client;
-                while (client)
-                {
-                    if (stm.DataAvailable && !client.IsControlled)
-                    {
-                        object message = Formatter.Deserialize(stm);
-                        TypeSetter.SendNewClientMessage(message);
-                    }
-                }
-                OnDisconnect?.Invoke();
+                HandlePacket();
             }
-            catch (ThreadAbortException e)
+            catch (Exception)
             {
-                //this usually happens when the client closes the listener
-                //since the thread isn't in use so it aborts it
                 OnDisconnect?.Invoke();
             }
+            
+        }
 
-            catch (ObjectDisposedException e)
+        private void HandlePacket()
+        {
+            NetworkStream stm = client;
+            if (stm.DataAvailable && !client.IsControlled)
             {
-                //this usually happens when the client closes the ClientTcp
-                //the ClientTcp is disposed(null) so it can't get the connected property of it
-                OnDisconnect?.Invoke();
+                object message = Formatter.Deserialize(stm);
+                TypeSetter.SendNewClientMessage(message);
             }
+        }
 
-            catch (Exception e)
+        private void ManageClient(int millisecondsTimeOutPerPoll, CancellationToken token)
+        {
+            while (client && !token.IsCancellationRequested)
             {
-                OnDisconnect?.Invoke();
+                //Make this function an automatic seperated thread poll events 
+                //And take int milliseconds as an argument for a thread.sleep() to not overload the CPU
+                PollEvents();
+                Thread.Sleep(millisecondsTimeOutPerPoll);
             }
+            pollEventsTask = null;
+        }
+
+
+        /// <summary>
+        /// Opens a task that automatically poll events
+        /// </summary>
+        /// <param name="millisecondsTimeOutPerPoll">Time to sleep between each poll</param>
+        /// <returns>CancellationTokenSource, to cancel the task at any time</returns>
+        public CancellationTokenSource ManagePollEvents(int millisecondsTimeOutPerPoll)
+        {
+            if (pollEventsTask != null)
+                return cancellationToken;
+
+            cancellationToken = new CancellationTokenSource();
+            pollEventsTask = new Task(() => ManageClient(millisecondsTimeOutPerPoll, cancellationToken.Token), cancellationToken.Token);
+            pollEventsTask.Start();
+            
+            return cancellationToken;
         }
 
         public void Dispose()

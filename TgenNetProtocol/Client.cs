@@ -21,7 +21,7 @@ namespace TgenNetProtocol
         {
             get
             {
-                if (!this) throw new Exception("Can't get NetworkStream, Client is not connected");
+                if (!this) throw new SocketException((int)SocketError.NotConnected);
                 if (networkStream != null)
                     return networkStream;
 
