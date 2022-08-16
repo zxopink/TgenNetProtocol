@@ -41,7 +41,7 @@ namespace TgenNetProtocol
             dualMode = true;
 
             active = false;
-            formatter = new TgenSerializer.TgenFormatter(CompressionFormat.Binary);
+            formatter = new TgenSerializer.Formatter(CompressionFormat.Binary);
         }
         /// <summary>
         /// Uses 'TgenSerializer' as a default Formatter
@@ -52,7 +52,7 @@ namespace TgenNetProtocol
             dualMode = false;
 
             active = false;
-            formatter = new TgenSerializer.TgenFormatter(CompressionFormat.Binary);
+            formatter = new TgenSerializer.Formatter(CompressionFormat.Binary);
         }
         /// <summary>
         /// Uses 'TgenSerializer' as a default Formatter
@@ -63,7 +63,7 @@ namespace TgenNetProtocol
             dualMode = false;
 
             active = false;
-            formatter = new TgenSerializer.TgenFormatter(CompressionFormat.Binary);
+            formatter = new TgenSerializer.Formatter(CompressionFormat.Binary);
         }
 
         public ServerManager(int port, IFormatter formatter)
