@@ -5,6 +5,7 @@ using System.Threading;
 using System.Net;
 using TgenSerializer;
 using System.Threading.Tasks;
+using System.Runtime.Serialization;
 
 namespace TgenNetProtocol
 {
@@ -26,34 +27,68 @@ namespace TgenNetProtocol
         private Socket listener;
         private readonly bool dualMode; //NEW VAR
 
-        private Formatter formatter;
         private readonly IPEndPoint localEP; //local EndPoint
-        public Formatter Formatter { get => formatter; set => formatter = value; }
+        private IFormatter formatter;
+        public IFormatter Formatter { get => formatter; set => formatter = value; }
         //private bool listen = false; //made to control the listening thread
 
+        /// <summary>
+        /// Uses 'TgenSerializer' as a default Formatter
+        /// </summary>
         public ServerManager(int port)
         {
             localEP = new IPEndPoint(IPAddress.IPv6Any, port);
             dualMode = true;
 
             active = false;
-            formatter = new Formatter(CompressionFormat.Binary);
+            formatter = new TgenSerializer.TgenFormatter(CompressionFormat.Binary);
         }
+        /// <summary>
+        /// Uses 'TgenSerializer' as a default Formatter
+        /// </summary>
         public ServerManager(IPAddress localaddr, int port)
         {
             localEP = new IPEndPoint(localaddr, port);
             dualMode = false;
 
             active = false;
-            formatter = new Formatter(CompressionFormat.Binary);
+            formatter = new TgenSerializer.TgenFormatter(CompressionFormat.Binary);
         }
+        /// <summary>
+        /// Uses 'TgenSerializer' as a default Formatter
+        /// </summary>
         public ServerManager(IPEndPoint localEP)
         {
             this.localEP = localEP;
             dualMode = false;
 
             active = false;
-            formatter = new Formatter(CompressionFormat.Binary);
+            formatter = new TgenSerializer.TgenFormatter(CompressionFormat.Binary);
+        }
+
+        public ServerManager(int port, IFormatter formatter)
+        {
+            localEP = new IPEndPoint(IPAddress.IPv6Any, port);
+            dualMode = true;
+
+            active = false;
+            this.formatter = formatter;
+        }
+        public ServerManager(IPAddress localaddr, int port, IFormatter formatter)
+        {
+            localEP = new IPEndPoint(localaddr, port);
+            dualMode = false;
+
+            active = false;
+            this.formatter = formatter;
+        }
+        public ServerManager(IPEndPoint localEP, IFormatter formatter)
+        {
+            this.localEP = localEP;
+            dualMode = false;
+
+            active = false;
+            this.formatter = formatter;
         }
 
         private bool active; // field

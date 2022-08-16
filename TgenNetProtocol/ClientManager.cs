@@ -4,6 +4,7 @@ using System.Net;
 using System.Net.Sockets;
 using TgenSerializer;
 using System.Threading.Tasks;
+using System.Runtime.Serialization;
 
 namespace TgenNetProtocol
 {
@@ -24,8 +25,8 @@ namespace TgenNetProtocol
         /// </summary>
         public event ClientActivity OnDisconnect;
 
-        private Formatter formatter;
-        public Formatter Formatter { get => formatter; }
+        private IFormatter formatter;
+        public IFormatter Formatter { get => formatter; }
 
         /// <summary>
         /// Checks if the listener for messages is active
@@ -62,12 +63,15 @@ namespace TgenNetProtocol
             }
         }
 
+        /// <summary>
+        /// Uses 'TgenSerializer' as a default Formatter
+        /// </summary>
         public ClientManager()
         {
             client = (Client)getNewSocket; //make an empty one that will be replaced for later
-            formatter = new Formatter(CompressionFormat.Binary);
+            formatter = new TgenSerializer.Formatter(CompressionFormat.Binary);
         }
-        public ClientManager(Formatter formatter)
+        public ClientManager(IFormatter formatter)
         {
             client = (Client)getNewSocket; //make an empty one that will be replaced for later
             this.formatter = formatter;
