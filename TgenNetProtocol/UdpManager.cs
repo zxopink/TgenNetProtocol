@@ -88,7 +88,14 @@ namespace TgenNetProtocol
             _localEP = localEP;
         }
 
-        public void Start()
+        public void Start() =>
+            RUdpClient.Start(_localEP.Port);
+
+        public void PollEvents() =>
+            RUdpClient.PollEvents();
+
+        //Start a thread that polls events
+        public void StartThread()
         {
             RUdpClient.Start(_localEP.Port);
             new Thread(RunEvents).Start();
@@ -123,24 +130,44 @@ namespace TgenNetProtocol
             Connect(new IPEndPoint(host, port), connectionData);
         #endregion
 
-        public void SendToAll(object obj, DeliveryMethod deliveryMethod)
+        public void SendToAll(object obj, DeliveryMethod deliveryMethod = DeliveryMethod.ReliableOrdered)
         {
             byte[] objGraph = Bytes.ClassToByte(obj);
             SendToAll(objGraph, deliveryMethod);
         }
-        public void SendToAll(ISerializable obj, DeliveryMethod deliveryMethod)
+        public void SendToAll(ISerializable obj, DeliveryMethod deliveryMethod = DeliveryMethod.ReliableOrdered)
         {
         //Makes a DataWriter with the object's type
             var writer = new DataWriter(obj);
             obj.Serialize(writer);
             SendToAll(writer, deliveryMethod);
         }
-        public void SendToAll(DataWriter obj, DeliveryMethod deliveryMethod) =>
+        public void SendToAll(DataWriter obj, DeliveryMethod deliveryMethod = DeliveryMethod.ReliableOrdered) =>
             SendToAll(obj.GetData(), deliveryMethod);
 
-        public void SendToAll(byte[] data, DeliveryMethod deliveryMethod)
+        public void SendToAll(byte[] data, DeliveryMethod deliveryMethod = DeliveryMethod.ReliableOrdered)
         {
             RUdpClient.SendToAll(data, deliveryMethod);
+        }
+
+        public void SendToAllExcept(object obj, NetPeer exclude, DeliveryMethod deliveryMethod = DeliveryMethod.ReliableOrdered)
+        {
+            byte[] objGraph = Bytes.ClassToByte(obj);
+            SendToAllExcept(objGraph, exclude, deliveryMethod);
+        }
+        public void SendToAllExcept(ISerializable obj, NetPeer exclude, DeliveryMethod deliveryMethod = DeliveryMethod.ReliableOrdered)
+        {
+            //Makes a DataWriter with the object's type
+            var writer = new DataWriter(obj);
+            obj.Serialize(writer);
+            SendToAllExcept(writer, exclude, deliveryMethod);
+        }
+        public void SendToAllExcept(DataWriter obj, NetPeer exclude, DeliveryMethod deliveryMethod = DeliveryMethod.ReliableOrdered) =>
+            SendToAllExcept(obj.GetData(), exclude, deliveryMethod);
+
+        public void SendToAllExcept(byte[] data, NetPeer exclude, DeliveryMethod deliveryMethod = DeliveryMethod.ReliableOrdered)
+        {
+            RUdpClient.SendToAll(data, deliveryMethod, exclude);
         }
 
         /// <summary>Send raw UDP packet, not reliable</summary>

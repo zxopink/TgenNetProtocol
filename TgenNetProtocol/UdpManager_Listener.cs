@@ -30,19 +30,19 @@ namespace TgenNetProtocol
 
         public void OnNetworkReceive(NetPeer peer, NetPacketReader reader, byte channelNumber, DeliveryMethod deliveryMethod)
         {
-            ReceivedData(peer.EndPoint, reader.GetRemainingBytes());
+            ReceivedData(peer, peer.EndPoint, reader.GetRemainingBytes());
         }
 
         public void OnNetworkReceiveUnconnected(IPEndPoint remoteEndPoint, NetPacketReader reader, UnconnectedMessageType messageType)
         {
-            ReceivedData(remoteEndPoint, reader.GetRemainingBytes());
+            ReceivedData(null, remoteEndPoint, reader.GetRemainingBytes());
         }
 
-        private void ReceivedData(IPEndPoint endPoint, byte[] data)
+        private void ReceivedData(NetPeer peer, IPEndPoint endPoint, byte[] data)
         {
             try
             {
-                UdpInfo info = new UdpInfo(endPoint);
+                UdpInfo info = peer != null ? new UdpInfo(peer) : new UdpInfo(endPoint);
                 var obj = Bytes.ByteToClass(data);
                 TypeSetter.SendNewDatagramMessage(obj, info);
             }
