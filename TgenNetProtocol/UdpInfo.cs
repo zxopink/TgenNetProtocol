@@ -11,7 +11,7 @@ namespace TgenNetProtocol
 {
     public struct UdpInfo : INetInfo
     {
-        public IPEndPoint EndPoint { get; set; }
+        public IPEndPoint EndPoint { get; private set; }
         public NetPeer Peer { get; set; }
         public UdpInfo(IPEndPoint endPoint)
         {

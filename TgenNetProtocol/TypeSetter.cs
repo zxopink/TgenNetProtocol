@@ -12,6 +12,18 @@ namespace TgenNetProtocol
         /// </summary>
         public volatile static bool isWorking = false;
 
+        public void Add(INetworkObject obj)
+        {
+            networkObjects.Add(obj);
+        }
+
+        public void Remove(INetworkObject obj)
+        {
+            int index = networkObjects.IndexOf(obj);
+            if (index != -1) //Found
+                networkObjects[index] = null;
+        }
+
         #region Server Get Message
         /// <summary>
         /// Called when a packet is received from a client
@@ -19,7 +31,7 @@ namespace TgenNetProtocol
         /// </summary>
         /// <param name="message">The sent object (Payload)</param>
         /// <param name="clientInfo">The client who sent the info</param>
-        public static void SendNewServerMessage(object message, ClientInfo clientInfo)
+        internal static void SendNewServerMessage(object message, ClientInfo clientInfo)
         {
             for (int i = 0; i < networkObjects.Count; i++)
             {
@@ -42,7 +54,7 @@ namespace TgenNetProtocol
         /// this method invokes client network methods on all active network objects
         /// </summary>
         /// <param name="message">The sent object (Payload)</param>
-        public static void SendNewClientMessage(object message)
+        internal static void SendNewClientMessage(object message)
         {
             for (int i = 0; i < networkObjects.Count; i++)
             {
@@ -67,7 +79,7 @@ namespace TgenNetProtocol
         /// </summary>
         /// <param name="message">The sent object (Payload)</param>
         /// <param name="packetData">The client who sent the info</param>
-        public static void SendNewDatagramMessage(object message, UdpInfo packetData)
+        internal static void SendNewDatagramMessage(object message, UdpInfo packetData)
         {
             for (int i = 0; i < networkObjects.Count; i++)
             {

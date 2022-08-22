@@ -10,87 +10,85 @@ namespace TgenNetProtocol
 {
     public class MethodData
     {
-        private Delegate del;
-        public Delegate Delegate { get => del; }
+        internal delegate void NetMethodInfo(dynamic netObject, INetInfo info);
+        internal delegate void NetMethod(dynamic netObject);
 
-        private Type returnType;
-        public Type ReturnType { get => returnType; }
+        private dynamic method;
 
-        private Type[] argumentsType;
-        /// <summary>
-        /// All the function's parameters (can also be ClientData)
-        /// </summary>
-        public Type[] ArgumentsType { get => argumentsType; }
+        public Delegate Method
+        {
+            get => method;
+            private set => method = value;
+        }
 
-        /// <summary>
-        /// The main argument of the function
-        /// </summary>
-        public Type ParameterType { get => ArgumentsType[0]; }
+        private Type parameterType;
+        /// <summary>The main argument of the function</summary>
+        public Type ParameterType { get => parameterType; }
 
-        private object parent;
-        public object Parent { get => parent; }
-
-        private MethodInfo method;
-        public MethodInfo Method { get => method; }
-
-        public bool hasClientData;
+        private bool hasClientData;
         ///<summary>If true, The function's second parameter is INetInfo</summary>
         public bool HasClientData { get => hasClientData; }
 
-        //public bool hasEPData;
-        ///<summary>If true, The function's second parameter is IPEndPoint</summary>
-        //public bool HasEPData { get => hasEPData; }
-        public MethodData(MethodInfo method, object parent)
+        public MethodData(MethodInfo methodInfo, object parent)
         {
-            this.method = method; //Must be set first
-            this.parent = parent;
+            var param = methodInfo.GetParameters();
+            hasClientData = param.Length > 1;
 
-            SetTypes(); //Must be called before delegate creation
-            del = CreateDelegate(parent);
+            Method = CreateDelegate(methodInfo, parent);
+
+            //TODO: Remove once code analyzers are in place
+            var exception = CheckErrors(methodInfo, param);
+            if (exception != null)
+                throw exception;
+
+            parameterType = param[0].ParameterType;
         }
 
-        private void SetTypes()
+        private ArgumentException CheckErrors(MethodInfo info, ParameterInfo[] parameters)
         {
-            ParameterInfo[] parameters = method.GetParameters();
-            Type[] types = new Type[parameters.Length];
+            string name = info.Name;
 
-            for (int i = 0; i < parameters.Length; i++)
-                types[i] = parameters[i].ParameterType;
+            if(info.ReturnType != typeof(void))
+                return new ArgumentException($"'{name}' return value has to be void");
 
-            //Set argument types
-            argumentsType = types;
+            if (parameters.Length == 0)
+                return new ArgumentException($"'{name}' doesn't accept any parameters");
 
-            //Set return type
-            returnType = method.ReturnType;
+            if (parameters.Length > 2)
+                return new ArgumentException($"'{name}' has more than 2 parameters");
 
-            //Check if method gets clientdata as parameter
-            if (parameters.Length >= 2)
-            {
-                //throw new NotImplementedException("Make it compatible with the new Datagram protocol");
-                //hasClientData = parameters[1].ParameterType == typeof(ClientData);
-                hasClientData = typeof(INetInfo).IsAssignableFrom(parameters[1].ParameterType);
-                //hasClientData = parameters[1].ParameterType.isass == typeof(ClientData);
-            }
+            if (parameters.Length > 1 && !typeof(INetInfo).IsAssignableFrom(parameters[1].ParameterType))
+                return new ArgumentException($"'{name}' second parameter is not of type {typeof(INetInfo)}");
+
+            return null;
         }
 
-        private Delegate CreateDelegate(object parent)
+        private Delegate CreateDelegate(MethodInfo info, object parent)
         {
-            int paramsAmount = argumentsType.Length + 1; //Parameters and return type
-            Type[] args = new Type[paramsAmount];
+            var param = info.GetParameters();
 
-            for (int i = 0; i < argumentsType.Length; i++)
-                args[i] = argumentsType[i];
-            args[argumentsType.Length] = returnType;
+            //Parameters and return type //[parameter,return] or [parameter, netinfo, return]
+            Type[] args = HasClientData ?
+                new Type[] { param[0].ParameterType, param[1].ParameterType, typeof(void) } :
+                new Type[] { param[0].ParameterType, typeof(void) };
 
             var delDecltype = Expression.GetDelegateType(args);
-            return Delegate.CreateDelegate(delDecltype, parent, method);
+            return info.CreateDelegate(delDecltype, parent);
         }
-        /// <summary>
-        /// </summary>
+
+        /// <summary>Invokes the function</summary>
         /// <param name="parameters">The functions parameters</param>
-        /// <returns></returns>
-        /// <exception cref="Exception">when things go wrong.</exception>
-        public object Invoke(object[] parameters) =>
-            method.Invoke(parent, parameters);
+        public void Invoke(object[] parameters)
+        {
+            if (HasClientData)
+                method(parameters[0], (INetInfo)parameters[1]);
+            else
+                method(parameters[0]);
+        }
+
+        public void Invoke(object netObject) =>
+            method(netObject);
+        public void Invoke(object netObject, INetInfo netInfo) =>
+            method(netObject, netInfo);
     }
 }

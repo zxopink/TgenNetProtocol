@@ -115,6 +115,6 @@ namespace TgenNetProtocol.WinForms
         /// <param name="method">The Method to invoke</param>
         /// <param name="objetsToSend">the arguments the Method takes</param>
         public void InvokeNetworkMethods(MethodData method, object[] objetsToSend) =>
-            Invoke(method.Delegate, objetsToSend);
+            Invoke(method.Method, objetsToSend);
     }
 }

@@ -1,4 +1,5 @@
-﻿using System.Net.Sockets;
+﻿using System.Net;
+using System.Net.Sockets;
 
 namespace TgenNetProtocol
 {
@@ -7,6 +8,7 @@ namespace TgenNetProtocol
     /// </summary>
     public struct ClientInfo : INetInfo
     {
+        public IPEndPoint EndPoint { get => (IPEndPoint)client.RemoteEndPoint; }
         public Client client;
         public int id;
 
