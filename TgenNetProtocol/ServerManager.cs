@@ -325,7 +325,7 @@ namespace TgenNetProtocol
                     NetworkStream stm = client;
                     Formatter.Serialize(stm, Message);
                 }
-                catch (Exception e) { if (throwOnError) throw e; /*client left as the message was serialized*/ }
+                catch (Exception e) { if (throwOnError) throw; /*client left as the message was serialized*/ }
             }
             else
                 TgenLog.Log("You are trying to send a message to a client who's not connected!"); //Not really an error

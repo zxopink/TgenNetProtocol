@@ -192,7 +192,7 @@ namespace TgenNetProtocol
                 OnDisconnect?.Invoke();
                 TgenLog.Log(e.ToString());
                 if (throwOnError)
-                    throw e;
+                    throw;
             }
         }
 
