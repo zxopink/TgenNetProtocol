@@ -235,7 +235,13 @@ namespace TgenNetProtocol
             }
             //the program WILL crash when client hangs the server
             //the catch makes sure to handle the program properly when a client leaves
-            catch
+            catch (Microsoft.CSharp.RuntimeBinder.RuntimeBinderException e)
+            {
+                //Methods mismatch, critical issue
+                TgenLog.Log("Dynamic method invoke exception: " + e.Message);
+                throw;
+            }
+            catch (Exception e)
             {
                 TgenLog.Log(client.id + " has disconnected");
                 DropClient(client);

@@ -10,9 +10,6 @@ namespace TgenNetProtocol
 {
     public class MethodData
     {
-        internal delegate void NetMethodInfo(dynamic netObject, INetInfo info);
-        internal delegate void NetMethod(dynamic netObject);
-
         private dynamic method;
 
         public Delegate Method
@@ -78,17 +75,20 @@ namespace TgenNetProtocol
 
         /// <summary>Invokes the function</summary>
         /// <param name="parameters">The functions parameters</param>
-        public void Invoke(object[] parameters)
+        public void Invoke(dynamic[] parameters)
         {
             if (HasClientData)
-                method(parameters[0], (INetInfo)parameters[1]);
+                method(parameters[0], parameters[1]);
             else
                 method(parameters[0]);
         }
 
-        public void Invoke(object netObject) =>
+        public void Invoke(dynamic netObject) =>
             method(netObject);
-        public void Invoke(object netObject, INetInfo netInfo) =>
-            method(netObject, netInfo);
+        public void Invoke(dynamic netObject, INetInfo netInfo) =>
+            method(netObject, (dynamic)netInfo);
+
+        //objects must be dynamic, the run-time doesn't look at the object type but the variable type
+        //Best way is to keep the variable dynamic
     }
 }
