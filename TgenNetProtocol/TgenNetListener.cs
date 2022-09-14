@@ -36,7 +36,7 @@ namespace TgenNetProtocol
             
         }
 
-        public void OnNetworkReceive(NetPeer peer, NetPacketReader reader, byte channelNumber, DeliveryMethod deliveryMethod)
+        public void OnNetworkReceive(NetPeer peer, NetPacketReader reader, DeliveryMethod deliveryMethod)
         {
             Console.WriteLine("Got message");
             ReceivedData(peer.EndPoint, reader.GetRemainingBytes());

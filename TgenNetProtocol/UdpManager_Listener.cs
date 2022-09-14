@@ -28,7 +28,7 @@ namespace TgenNetProtocol
         public void OnNetworkLatencyUpdate(NetPeer peer, int latency) =>
             NetworkLatencyUpdateEvent?.Invoke(peer, latency);
 
-        public void OnNetworkReceive(NetPeer peer, NetPacketReader reader, byte channelNumber, DeliveryMethod deliveryMethod)
+        public void OnNetworkReceive(NetPeer peer, NetPacketReader reader, DeliveryMethod deliveryMethod)
         {
             ReceivedData(peer, peer.EndPoint, reader.GetRemainingBytes());
         }

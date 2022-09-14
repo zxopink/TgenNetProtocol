@@ -8,12 +8,12 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="LiteNetLib" Version="0.9.5.2" />
     <PackageReference Include="Microsoft.CSharp" Version="4.7.0" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\..\TgenSerializer\TgenSerializer\TgenSerializer.csproj" />
-    <ProjectReference Include="..\LiteNetLib\LiteNetLib.csproj" />
   </ItemGroup>
 
 </Project>
