@@ -123,6 +123,9 @@ namespace TgenNetProtocol
         /// If set to null, every connection will be accepted </summary>
         public byte[] PassKey { get => passKey; set => passKey = value; }
 
+        /// <summary>
+        /// returns IPv4 if available. Else - string.Empty
+        /// </summary>
         public string LocalIp
         {
             get
@@ -135,7 +138,7 @@ namespace TgenNetProtocol
                         return ip.ToString();
                     }
                 }
-                return "No network adapters with an IPv4 address in the system!";
+                return string.Empty;
                 //throw new Exception("No network adapters with an IPv4 address in the system!");
             }
         }

@@ -47,6 +47,9 @@ namespace TgenNetProtocol
             get { return new Socket(SocketType.Stream, ProtocolType.Tcp); }
         }
 
+        /// <summary>
+        /// returns IPv4 if available. Else - string.Empty
+        /// </summary>
         public string LocalIp
         {
             get
@@ -59,7 +62,7 @@ namespace TgenNetProtocol
                         return ip.ToString();
                     }
                 }
-                return "No network adapters with an IPv4 address in the system!";
+                return string.Empty;
             }
         }
 
