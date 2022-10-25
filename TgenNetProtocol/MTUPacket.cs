@@ -20,7 +20,7 @@ namespace TgenNetProtocol
 
         public void Append(byte[] data)
         {
-            Data.Append(data);
+            Data += data;
             fragment++;
         }
     }

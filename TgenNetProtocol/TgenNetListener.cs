@@ -53,7 +53,7 @@ namespace TgenNetProtocol
             try
             {
                 UdpInfo info = new UdpInfo(endPoint);
-                var obj = Bytes.ByteToClass(data);
+                var obj = Formatter.FromBytes(data);
                 TypeSetter.SendNewDatagramMessage(obj, info);
             }
             catch (Exception e)

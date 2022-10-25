@@ -132,7 +132,7 @@ namespace TgenNetProtocol
 
         public void SendToAll(object obj, DeliveryMethod deliveryMethod = DeliveryMethod.ReliableOrdered)
         {
-            byte[] objGraph = Bytes.ClassToByte(obj);
+            byte[] objGraph = Formatter.ToBytes(obj);
             SendToAll(objGraph, deliveryMethod);
         }
         public void SendToAll(ISerializable obj, DeliveryMethod deliveryMethod = DeliveryMethod.ReliableOrdered)
@@ -152,7 +152,7 @@ namespace TgenNetProtocol
 
         public void SendToAllExcept(object obj, NetPeer exclude, DeliveryMethod deliveryMethod = DeliveryMethod.ReliableOrdered)
         {
-            byte[] objGraph = Bytes.ClassToByte(obj);
+            byte[] objGraph = Formatter.ToBytes(obj);
             SendToAllExcept(objGraph, exclude, deliveryMethod);
         }
         public void SendToAllExcept(ISerializable obj, NetPeer exclude, DeliveryMethod deliveryMethod = DeliveryMethod.ReliableOrdered)
@@ -173,7 +173,7 @@ namespace TgenNetProtocol
         /// <summary>Send raw UDP packet, not reliable</summary>
         public void SendUnconnectedMessage(object obj, IPEndPoint endPoint)
         {
-            byte[] objGraph = Bytes.ClassToByte(obj);
+            byte[] objGraph = Formatter.ToBytes(obj);
             SendUnconnectedMessage(objGraph, endPoint);
         }
         /// <summary>Send raw UDP packet, not reliable</summary>

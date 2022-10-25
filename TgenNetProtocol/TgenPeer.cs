@@ -10,7 +10,7 @@ namespace TgenNetProtocol
     {
         public static void Send(this NetPeer peer, object obj, DeliveryMethod deliveryMethod = DeliveryMethod.ReliableOrdered)
         {
-            byte[] objGraph = Bytes.ClassToByte(obj);
+            byte[] objGraph = Formatter.ToBytes(obj);
             peer.Send(objGraph, deliveryMethod);
         }
         public static void Send(this NetPeer peer, ISerializable obj, DeliveryMethod deliveryMethod = DeliveryMethod.ReliableOrdered)
