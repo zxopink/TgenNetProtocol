@@ -48,7 +48,7 @@ namespace Benchmarks
         }
 
         [Benchmark]
-        public void MethodInfoCall()
+        public void MethodBaseCall()
         {
             MethodInfo.Invoke(this, new object[] {4});
         }

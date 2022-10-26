@@ -1,51 +1,68 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Data;
+using System.Diagnostics;
 using System.Linq;
 using System.Reflection;
+using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Xml.Linq;
 
 namespace TgenNetProtocol
 {
     public abstract class NetworkBehavour : INetworkObject
     {
-        public List<MethodData> ServerMethods { get; private set; }
-        public List<MethodData> ClientMethods { get; private set; }
-        public List<MethodData> DgramMethods { get; private set; }
+        public static readonly Dictionary<Type/*Object Type*/,
+            Dictionary<Type /*Attribute type*/, List<MethodData> /*Methods of object*/>> TotalNetMethods = new Dictionary<Type, Dictionary<Type, List<MethodData>>>();
+
+        protected Dictionary<Type /*Attriute type*/, List<MethodData> /*Methods*/> NetworkMethods => new Dictionary<Type, List<MethodData>>()
+        {
+                { typeof(ServerReceiverAttribute), new List<MethodData>() },
+                { typeof(ClientReceiverAttribute), new List<MethodData>() },
+                { typeof(DgramReceiverAttribute), new List<MethodData>() }
+        };
+
+        public List<MethodData> ServerMethods => NetworkMethods[typeof(ServerReceiverAttribute)];
+        public List<MethodData> ClientMethods => NetworkMethods[typeof(ClientReceiverAttribute)];
+        public List<MethodData> DgramMethods => NetworkMethods[typeof(DgramReceiverAttribute)];
 
         public NetworkBehavour()
         {
             SetUpMethods();
 
-            //`System.Threading.Monitor` check later, responsible for thread work
-            //Task.Run(AddToAttributes);
             Add2Attributes();
         }
 
-        public void SetUpMethods()
+        public virtual void SetUpMethods()
         {
-            //Gets public/private/(public inherited) methods
-            MethodInfo[] methods = GetType().GetMethods(BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Instance | BindingFlags.FlattenHierarchy | BindingFlags.InvokeMethod);
-            IEnumerable<MethodInfo> serverActions = methods.Where(x => x.GetCustomAttributes(typeof(ServerReceiverAttribute), false).FirstOrDefault() != null);
-            IEnumerable<MethodInfo> clientActions = methods.Where(x => x.GetCustomAttributes(typeof(ClientReceiverAttribute), false).FirstOrDefault() != null);
-            IEnumerable<MethodInfo> dgramAction = methods.Where(x => x.GetCustomAttributes(typeof(DgramReceiverAttribute), false).FirstOrDefault() != null);
-
-            ServerMethods = GetMethodsData(serverActions);
-            ClientMethods = GetMethodsData(clientActions);
-            DgramMethods = GetMethodsData(dgramAction);
+            Type thisType = GetType();
+            if (!TotalNetMethods.TryGetValue(thisType, out var typeMethods))
+            {
+                SetTypeMethods();
+                return;
+            }
+            foreach (var attribute in typeMethods.Keys)
+            {
+                List<MethodData> newTargetedMethods = typeMethods[attribute].Select(method => method.ChangeTarget(this)).ToList();
+                NetworkMethods[attribute] = newTargetedMethods;
+            }
         }
 
-
-        //Might be slow, don't use yet
-        /// <summary>Recursive search for type's method, only way to get all methods in object (including private inherited methods)</summary>
-        public static IEnumerable<MethodInfo> GetMethods(Type type)
+        protected virtual void SetTypeMethods()
         {
-            IEnumerable<MethodInfo> methods = type.GetMethods(BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Instance);
+            Type thisType = GetType();
+            //Gets public/private/(public inherited) methods
+            MethodInfo[] methods = thisType.GetMethods(BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Instance | BindingFlags.FlattenHierarchy | BindingFlags.InvokeMethod);
 
-            if (type.BaseType != null)
-                methods = methods.Concat(GetMethods(type.BaseType));
+            foreach (var attribute in NetworkMethods.Keys)
+            {
+                var actions = methods.Where(x => x.GetCustomAttributes(attribute, false).FirstOrDefault() != null).ToList();
+                var actionsData = GetMethodsData(actions);
+                NetworkMethods[attribute] = actionsData;
+            }
 
-            return methods;
+            TotalNetMethods.Add(thisType, NetworkMethods);
         }
 
         private List<MethodData> GetMethodsData(IEnumerable<MethodInfo> methods)
@@ -90,9 +107,9 @@ namespace TgenNetProtocol
                     TypeSetter.networkObjects.Remove(this);
                     isDone = true;
                 }
-                ServerMethods.Clear();
-                ClientMethods.Clear();
-                DgramMethods.Clear();
+                foreach (var attribute in NetworkMethods.Keys)
+                    NetworkMethods[attribute].Clear();
+                NetworkMethods.Clear();
             }
         }
 
@@ -102,9 +119,9 @@ namespace TgenNetProtocol
             if(index != -1) //Found
                 TypeSetter.networkObjects[index] = null;
 
-            ServerMethods.Clear();
-            ClientMethods.Clear();
-            DgramMethods.Clear();
+            foreach (var attribute in NetworkMethods.Keys)
+                NetworkMethods[attribute].Clear();
+            NetworkMethods.Clear();
         }
 
         public void Dispose() =>

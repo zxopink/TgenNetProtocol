@@ -10,35 +10,48 @@ namespace TgenNetProtocol
 {
     public class MethodData
     {
-        private dynamic method;
+        private dynamic _method;
 
         public Delegate Method
         {
-            get => method;
-            private set => method = value;
+            get => _method;
+            private set => _method = value;
         }
 
-        private Type parameterType;
-        /// <summary>The main argument of the function</summary>
-        public Type ParameterType { get => parameterType; }
+        private Type _methodType;
+        private Type MethodType => _methodType;
 
-        private bool hasClientData;
+        private Type _parameterType;
+        /// <summary>The main argument of the function</summary>
+        public Type ParameterType { get => _parameterType; }
+
+        private bool _hasClientData;
         ///<summary>If true, The function's second parameter is INetInfo</summary>
-        public bool HasClientData { get => hasClientData; }
+        public bool HasClientData { get => _hasClientData; }
 
         public MethodData(MethodInfo methodInfo, object parent)
         {
             var param = methodInfo.GetParameters();
-            hasClientData = param.Length > 1;
-
-            Method = CreateDelegate(methodInfo, parent);
+            _hasClientData = param.Length > 1;
 
             //TODO: Remove once code analyzers are in place
             var exception = CheckErrors(methodInfo, param);
             if (exception != null)
                 throw exception;
 
-            parameterType = param[0].ParameterType;
+            Method = CreateDelegate(methodInfo, parent);
+
+            _parameterType = param[0].ParameterType;
+        }
+
+        private MethodData(MethodData otherData, object parent)
+        {
+            _methodType = otherData.MethodType;
+            _parameterType = otherData.ParameterType;
+            _hasClientData = otherData.HasClientData;
+
+            Delegate otherMethod = otherData.Method;
+            Method = otherMethod.Method.CreateDelegate(MethodType, parent);
         }
 
         private ArgumentException CheckErrors(MethodInfo info, ParameterInfo[] parameters)
@@ -66,11 +79,16 @@ namespace TgenNetProtocol
 
             //Parameters and return type //[parameter,return] or [parameter, netinfo, return]
             Type[] args = HasClientData ?
-                new Type[] { param[0].ParameterType, param[1].ParameterType, typeof(void) } :
-                new Type[] { param[0].ParameterType, typeof(void) };
+                new Type[] { param[0].ParameterType, param[1].ParameterType, info.ReturnType } :
+                new Type[] { param[0].ParameterType, info.ReturnType };
 
-            var delDecltype = Expression.GetDelegateType(args);
-            return info.CreateDelegate(delDecltype, parent);
+            _methodType = Expression.GetDelegateType(args);
+            return info.CreateDelegate(_methodType, parent);
+        }
+
+        public MethodData ChangeTarget(object target)
+        {
+            return new MethodData(this, target);
         }
 
         /// <summary>Invokes the function</summary>
@@ -78,15 +96,15 @@ namespace TgenNetProtocol
         public void Invoke(dynamic[] parameters)
         {
             if (HasClientData)
-                method(parameters[0], parameters[1]);
+                _method(parameters[0], parameters[1]);
             else
-                method(parameters[0]);
+                _method(parameters[0]);
         }
 
         public void Invoke(dynamic netObject) =>
-            method(netObject);
+            _method(netObject);
         public void Invoke(dynamic netObject, INetInfo netInfo) =>
-            method(netObject, (dynamic)netInfo);
+            _method(netObject, (dynamic)netInfo);
 
         //objects must be dynamic, the run-time doesn't look at the object type but the variable type
         //Best way is to keep the variable dynamic
