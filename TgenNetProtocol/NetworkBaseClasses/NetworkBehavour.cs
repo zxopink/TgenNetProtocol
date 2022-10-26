@@ -31,7 +31,7 @@ namespace TgenNetProtocol
         {
             SetUpMethods();
 
-            Add2Attributes();
+            AddToAttributes();
         }
 
         public virtual void SetUpMethods()
@@ -57,7 +57,7 @@ namespace TgenNetProtocol
 
             foreach (var attribute in NetworkMethods.Keys)
             {
-                var actions = methods.Where(x => x.GetCustomAttributes(attribute, false).FirstOrDefault() != null).ToList();
+                var actions = methods.Where(x => x.GetCustomAttributes(attribute, false).FirstOrDefault() != null);
                 var actionsData = GetMethodsData(actions);
                 NetworkMethods[attribute] = actionsData;
             }
@@ -74,60 +74,21 @@ namespace TgenNetProtocol
             return methodsData;
         }
 
-        /// <summary>
-        /// This method makes sure the other threads that sends message isn't getting effected while it's active
-        /// Things can break if two thread work on the same variable/method
-        /// </summary>
-        private void AddToAttributes()
+        protected virtual void AddToAttributes()
         {
-            bool isDone = false;
-            while (!isDone)
-            {
-                if (!TypeSetter.isWorking)
-                {
-                    TgenLog.Log("adding " + this.ToString() + " to the list");
-                    TypeSetter.networkObjects.Add(this);
-                    isDone = true;
-                }
-            }
-        }
-        private void Add2Attributes()
-        {
-            TgenLog.Log("adding " + this.ToString() + " to the list");
-            TypeSetter.networkObjects.Add(this);
+            TypeSetter.Add(this);
         }
 
-        private void RemoveFromAttributes()
+        protected virtual void RemoveFromAttributes()
         {
-            bool isDone = false;
-            while (!isDone)
-            {
-                if (!TypeSetter.isWorking)
-                {
-                    TypeSetter.networkObjects.Remove(this);
-                    isDone = true;
-                }
-                foreach (var attribute in NetworkMethods.Keys)
-                    NetworkMethods[attribute].Clear();
-                NetworkMethods.Clear();
-            }
-        }
-
-        private void Remove2Attributes()
-        {
-            int index = TypeSetter.networkObjects.IndexOf(this);
-            if(index != -1) //Found
-                TypeSetter.networkObjects[index] = null;
-
-            foreach (var attribute in NetworkMethods.Keys)
-                NetworkMethods[attribute].Clear();
+            TypeSetter.Remove(this);
             NetworkMethods.Clear();
         }
 
-        public void Dispose() =>
-            Remove2Attributes();//Task.Run(RemoveFromAttributes);
+        public virtual void Dispose() =>
+            RemoveFromAttributes();//Task.Run(RemoveFromAttributes);
 
-        public void InvokeNetworkMethods(MethodData method, object[] objetsToSend) =>
+        public virtual void InvokeNetworkMethods(MethodData method, object[] objetsToSend) =>
             method.Invoke(objetsToSend);
     }
 }

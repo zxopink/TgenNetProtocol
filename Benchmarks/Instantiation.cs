@@ -27,6 +27,11 @@ namespace Benchmarks
     [MemoryDiagnoser]
     public class Instantiation
     {
+        [GlobalSetup]
+        public void Setup()
+        {
+            new NetClass();
+        }
         [Benchmark]
         public void CreateNetObj()
         {
@@ -52,6 +57,19 @@ namespace Benchmarks
         //|       Method |     Mean |   Error |  StdDev |   Gen0 |   Gen1 | Allocated |
         //|------------- |---------:|--------:|--------:|-------:|-------:|----------:|
         //| CreateNetObj | 181.5 us | 3.29 us | 3.24 us | 2.6855 | 1.2207 |   8.56 KB |
+
+        //|       Method |     Mean |   Error |  StdDev |   Gen0 |   Gen1 | Allocated |
+        //|------------- |---------:|--------:|--------:|-------:|-------:|----------:|
+        //| CreateNetObj | 131.4 us | 1.71 us | 1.43 us | 1.7090 | 0.7324 |   7.11 KB |
+
+        //|       Method |     Mean |    Error |   StdDev |   Gen0 | Allocated |
+        //|------------- |---------:|---------:|---------:|-------:|----------:|
+        //| CreateNetObj | 706.2 ns | 12.18 ns | 11.40 ns | 0.3500 |   1.43 KB |
+
+        //Final:
+        //|       Method |     Mean |    Error |   StdDev |   Gen0 |   Gen1 | Allocated |
+        //|------------- |---------:|---------:|---------:|-------:|-------:|----------:|
+        //| CreateNetObj | 875.4 ns | 12.12 ns | 10.12 ns | 0.3500 | 0.0868 |   1.43 KB |
         
     }
 }
