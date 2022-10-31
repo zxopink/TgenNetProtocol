@@ -1,10 +1,12 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Concurrent;
+using System.Collections.Generic;
 
 namespace TgenNetProtocol
 {
     public class TypeSetter
     {
-        public volatile static List<INetworkObject> networkObjects = new List<INetworkObject>(); //list of active networkObjects
+        public static List<INetworkObject> networkObjects = new List<INetworkObject>(); //list of active networkObjects
 
         /// <summary>
         /// this bool lets other threads know if a message is being send
@@ -12,12 +14,12 @@ namespace TgenNetProtocol
         /// </summary>
         public volatile static bool isWorking = false;
 
-        public void Add(INetworkObject obj)
+        internal static void Add(INetworkObject obj)
         {
             networkObjects.Add(obj);
         }
 
-        public void Remove(INetworkObject obj)
+        internal static void Remove(INetworkObject obj)
         {
             int index = networkObjects.IndexOf(obj);
             if (index != -1) //Found
@@ -33,6 +35,7 @@ namespace TgenNetProtocol
         /// <param name="clientInfo">The client who sent the info</param>
         internal static void SendNewServerMessage(object message, ClientInfo clientInfo)
         {
+            isWorking = true;
             for (int i = 0; i < networkObjects.Count; i++)
             {
                 INetworkObject networkObject = networkObjects[i];
@@ -45,6 +48,7 @@ namespace TgenNetProtocol
                 NetworkObjHandler(clientInfo, methodsInfo, message, networkObject);
             }
             CleanNullObjects();
+            isWorking = false;
         }
         #endregion
 
@@ -56,6 +60,7 @@ namespace TgenNetProtocol
         /// <param name="message">The sent object (Payload)</param>
         internal static void SendNewClientMessage(object message)
         {
+            isWorking = true;
             for (int i = 0; i < networkObjects.Count; i++)
             {
                 INetworkObject networkObject = networkObjects[i];
@@ -65,10 +70,10 @@ namespace TgenNetProtocol
                 // get method by name,  or loop through all methods
                 // looking for an attribute
                 var methodsInfo = networkObject.ClientMethods;
-
                 NetworkObjHandler(methodsInfo, message, networkObject);
             }
             CleanNullObjects();
+            isWorking = false;
         }
         #endregion
 
@@ -81,6 +86,7 @@ namespace TgenNetProtocol
         /// <param name="packetData">The client who sent the info</param>
         internal static void SendNewDatagramMessage(object message, UdpInfo packetData)
         {
+            isWorking = true;
             for (int i = 0; i < networkObjects.Count; i++)
             {
                 INetworkObject networkObject = networkObjects[i];
@@ -93,6 +99,7 @@ namespace TgenNetProtocol
                 NetworkObjHandler(packetData, methodsInfo, message, networkObject);
             }
             CleanNullObjects();
+            isWorking = false;
         }
         #endregion
 
