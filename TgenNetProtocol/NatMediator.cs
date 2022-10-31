@@ -14,6 +14,13 @@ namespace TgenNetProtocol
         public DateTime At { get; private set; }
         public string Token { get; private set; }
 
+        /// <summary>Could be null depending on the NatMediator OnlyAcceptConnectedPeers field</summary>
+        public NetPeer NetPeer { get; private set; } = default;
+        public WaitPeer(IPEndPoint local, IPEndPoint remote, NetPeer peerInstance, string token) 
+            : this(local, remote, token)
+        {
+            NetPeer = peerInstance;
+        }
         public WaitPeer(IPEndPoint local, IPEndPoint remote, string token)
         {
             Token = token;
@@ -29,6 +36,7 @@ namespace TgenNetProtocol
         public List<WaitPeer> PendingPeers { get; private set; }
         public NetManager Manager { get; private set; }
         public NatPunchModule Module => Manager.NatPunchModule;
+        public bool OnlyAcceptConnectedPeers { get; set; } = true;
         public NatMediator(NetManager manager)
         {
             PendingPeers = new List<WaitPeer>();
@@ -49,10 +57,17 @@ namespace TgenNetProtocol
 
         public void OnNatIntroductionRequest(IPEndPoint localEndPoint, IPEndPoint remoteEndPoint, string token)
         {
-            
-            var peer = new WaitPeer(localEndPoint, remoteEndPoint, token);
-            OnRequest?.Invoke(peer);
-            PendingPeers.Add(peer);
+            NetPeer found = default;
+            foreach (var peer in Manager.ConnectedPeerList)
+            {
+                if (peer.EndPoint == remoteEndPoint)
+                    found = peer;
+            }
+            if (found == default && OnlyAcceptConnectedPeers) return;
+
+            var waitPeer = new WaitPeer(localEndPoint, remoteEndPoint, found, token);
+            OnRequest?.Invoke(waitPeer);
+            PendingPeers.Add(waitPeer);
         }
 
         public void OnNatIntroductionSuccess(IPEndPoint targetEndPoint, NatAddressType type, string token)
