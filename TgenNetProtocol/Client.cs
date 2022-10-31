@@ -25,8 +25,7 @@ namespace TgenNetProtocol
                 if (networkStream != null)
                     return networkStream;
 
-                networkStream = new NetworkStream(client);
-                return networkStream;
+                return networkStream = new NetworkStream(client);
             }
         }
 

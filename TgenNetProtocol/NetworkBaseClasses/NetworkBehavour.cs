@@ -16,7 +16,7 @@ namespace TgenNetProtocol
         public static readonly Dictionary<Type/*Object Type*/,
             Dictionary<Type /*Attribute type*/, List<MethodData> /*Methods of object*/>> TotalNetMethods = new Dictionary<Type, Dictionary<Type, List<MethodData>>>();
 
-        protected Dictionary<Type /*Attriute type*/, List<MethodData> /*Methods*/> NetworkMethods => new Dictionary<Type, List<MethodData>>()
+        protected Dictionary<Type /*Attriute type*/, List<MethodData> /*Methods*/> NetworkMethods = new Dictionary<Type, List<MethodData>>()
         {
                 { typeof(ServerReceiverAttribute), new List<MethodData>() },
                 { typeof(ClientReceiverAttribute), new List<MethodData>() },
@@ -85,7 +85,6 @@ namespace TgenNetProtocol
             {
                 if (!TypeSetter.isWorking)
                 {
-                    TgenLog.Log("adding " + this.ToString() + " to the list");
                     TypeSetter.networkObjects.Add(this);
                     isDone = true;
                 }
@@ -93,7 +92,6 @@ namespace TgenNetProtocol
         }
         private void Add2Attributes()
         {
-            TgenLog.Log("adding " + this.ToString() + " to the list");
             TypeSetter.networkObjects.Add(this);
         }
 

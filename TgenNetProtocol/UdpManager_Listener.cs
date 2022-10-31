@@ -4,8 +4,10 @@ using System;
 using System.Collections.Generic;
 using System.Net;
 using System.Net.Sockets;
+using System.Runtime.Serialization;
 using System.Text;
 using TgenSerializer;
+using Formatter = TgenSerializer.Formatter;
 
 namespace TgenNetProtocol
 {
@@ -13,8 +15,7 @@ namespace TgenNetProtocol
     {
         public void OnConnectionRequest(ConnectionRequest request)
         {
-            Console.WriteLine("Connection request pending but accepting :)");
-            request.Accept();
+            request.AcceptIfKey(ConnectionKey);
         }
 
         public void OnMessageDelivered(NetPeer peer, object userData)
@@ -46,7 +47,7 @@ namespace TgenNetProtocol
                 var obj = Formatter.FromBytes(data);
                 TypeSetter.SendNewDatagramMessage(obj, info);
             }
-            catch (Exception e)
+            catch (SerializationException e)
             {
                 Console.WriteLine("Formatting exception");
                 Console.WriteLine(e.Message);

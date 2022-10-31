@@ -39,7 +39,6 @@ namespace TgenNetTools
             }
             catch (Exception e)
             {
-                TgenLog.Log(e.ToString());
                 throw e;
             }
         }
@@ -70,7 +69,6 @@ namespace TgenNetTools
             }
             catch (Exception e)
             {
-                TgenLog.Log(e.ToString());
                 throw e;
             }
         }

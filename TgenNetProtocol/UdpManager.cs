@@ -10,6 +10,9 @@ using TgenSerializer;
 using System.Collections.Concurrent;
 using LiteNetLib;
 using LiteNetLib.Utils;
+using System.Runtime.Serialization;
+using ISerializable = TgenSerializer.ISerializable;
+using Formatter = TgenSerializer.Formatter;
 
 namespace TgenNetProtocol
 {
@@ -32,6 +35,8 @@ namespace TgenNetProtocol
 
         public NetManager RUdpClient { get; private set; }
 
+        private CancellationTokenSource TokenSource { get; set; }
+        private Task PollEventsAsync { get; set; }
         //Default connection key
         private const string CONN_KEY = "TgenKey";
         private string userKey = null;
@@ -94,17 +99,29 @@ namespace TgenNetProtocol
         public void PollEvents() =>
             RUdpClient.PollEvents();
 
-        //Start a thread that polls events
-        public void StartThread()
+        /// <summary>
+        /// Fires a task that polls events async until the instance stops or the cancellation token is called
+        /// </summary>
+        /// <param name="millisecondsTimeOutPerPoll"></param>
+        /// <returns>Token source to cancel the task</returns>
+        public CancellationTokenSource ManagePollEvents(int millisecondsTimeOutPerPoll)
         {
+            if (PollEventsAsync != null && PollEventsAsync.IsCompleted) 
+                return TokenSource;
+
+            TokenSource = new CancellationTokenSource();
             RUdpClient.Start(_localEP.Port);
-            new Thread(RunEvents).Start();
+            PollEventsAsync = RunEvents(millisecondsTimeOutPerPoll, TokenSource.Token);
+            return TokenSource;
         }
 
-        private void RunEvents()
+        private async Task RunEvents(int millisecondsTimeOutPerPoll, CancellationToken token)
         {
-            while (RUdpClient.IsRunning)
+            while (!token.IsCancellationRequested && RUdpClient.IsRunning)
+            {
                 RUdpClient.PollEvents();
+                await Task.Delay(millisecondsTimeOutPerPoll);
+            }
         }
 
         #region Connect Methods
@@ -182,21 +199,6 @@ namespace TgenNetProtocol
         /// <summary>Send raw UDP packet, not reliable</summary>
         public void SendUnconnectedMessage(byte[] data, IPEndPoint endPoint) =>
             RUdpClient.SendUnconnectedMessage(data, endPoint);
-
-        /*
-        public void Send(object obj, IPEndPoint endPoint)
-        {
-            byte[] objGraph = Bytes.ClassToByte(obj);
-            Bytes size = objGraph.Length;
-            client.SendTo(size, endPoint);
-            client.SendTo(objGraph, endPoint);
-        }
-        public void Send(object obj, IPEndPoint[] endPoints)
-        {
-            foreach (IPEndPoint endPoint in endPoints)
-                Send(obj, endPoint);
-        }
-        */
 
         /// <summary>Disconnects from peer</summary>
         public void Kick(NetPeer peer) =>

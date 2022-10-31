@@ -142,20 +142,17 @@ namespace TgenNetProtocol
                 //throw new Exception("No network adapters with an IPv4 address in the system!");
             }
         }
-        private Socket getNewListenSocket
+        private Socket GetNewListenSocket()
         {
-            get {
-                Socket socket = new Socket(localEP.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
-                socket.DualMode = dualMode;
-                socket.Bind(localEP);
-                return socket;
-            }
+            Socket socket = new Socket(localEP.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
+            socket.DualMode = dualMode;
+            socket.Bind(localEP);
+            return socket;
         }
 
         private int clientsCount = 0; //an Id counter
         private ClientInfo AcceptIncomingClient()
         {
-            TgenLog.Log("Accepting new socket!");
             Socket newClientListener = listener.Accept();
 
             newClientListener.NoDelay = true; //disables delay which occures when sending small chunks of data
@@ -241,12 +238,10 @@ namespace TgenNetProtocol
             catch (Microsoft.CSharp.RuntimeBinder.RuntimeBinderException e)
             {
                 //Methods mismatch, critical issue
-                TgenLog.Log("Dynamic method invoke exception: " + e.Message);
                 throw;
             }
             catch (Exception e)
             {
-                TgenLog.Log(client.id + " has disconnected");
                 DropClient(client);
             }
         }
@@ -269,18 +264,6 @@ namespace TgenNetProtocol
             }
         }
 
-
-        private void ManageServer(int millisecondsTimeOutPerPoll, CancellationToken token)
-        {
-            while (active && !token.IsCancellationRequested)
-            {
-                //Make this function an automatic seperated thread poll events 
-                //And take int milliseconds as an argument for a thread.sleep() to not overload the CPU
-                PollEvents();
-                Thread.Sleep(millisecondsTimeOutPerPoll);
-            }
-        }
-
         /// <summary>
         /// Is called to disconnect a client from the server (Close communications)
         /// </summary>
@@ -300,7 +283,6 @@ namespace TgenNetProtocol
         /// <param name="client"></param>
         private void DropClient(ClientInfo client)
         {
-            TgenLog.Log("Aborting client: " + client);
             AbortClient(client);
         }
 
@@ -313,10 +295,7 @@ namespace TgenNetProtocol
             if (client)
             {
                 AbortClient(client);
-                TgenLog.Log("Kicking client: " + client);
             }
-            else
-                TgenLog.Log("The client isn't active!");
         }
 
         /// <summary>
@@ -337,8 +316,7 @@ namespace TgenNetProtocol
                 catch (Exception e) { if (throwOnError) throw; /*client left as the message was serialized*/ }
             }
             else
-                TgenLog.Log("You are trying to send a message to a client who's not connected!"); //Not really an error
-                                                                                                  //throw new Exception("You are trying to send a message to a client who's not connected!");
+                throw new SocketException((int)SocketError.NotConnected);
         }
 
         /// <summary>
@@ -356,8 +334,6 @@ namespace TgenNetProtocol
                     Send(Message, client, throwOnError);
                 }
             }
-            else
-                TgenLog.Log("No clients are connected!");
         }
 
         /// <summary>
@@ -369,17 +345,12 @@ namespace TgenNetProtocol
         /// /// <param name="throwOnError">Throw exception on failed send</param>
         public void SendToAllExcept(object Message, ClientInfo client, bool throwOnError = false)
         {
-            if (clients.Count >= 0)
+            for (int i = 0; i < AmountOfClients; i++)
             {
-                for (int i = 0; i < AmountOfClients; i++)
-                {
-                    ClientInfo currentClient = clients[i];
-                    if (currentClient.id != client.id)
-                        Send(Message, currentClient, throwOnError);
-                }
+                ClientInfo currentClient = clients[i];
+                if (currentClient.id != client.id)
+                    Send(Message, currentClient, throwOnError);
             }
-            else
-                TgenLog.Log("No clients are connected!");
         }
 
         public void Start() => 
@@ -390,11 +361,9 @@ namespace TgenNetProtocol
             if (!active)
             {
                 active = true;
-                listener = getNewListenSocket;
+                listener = GetNewListenSocket();
                 listener.Listen(backlog);
             }
-            else
-                TgenLog.Log("The listener is already open!");
         }
 
         /// <summary>
@@ -408,10 +377,20 @@ namespace TgenNetProtocol
                 return cancellationToken;
 
             cancellationToken = new CancellationTokenSource();
-            pollEventsTask = new Task(() => ManageServer(millisecondsTimeOutPerPoll, cancellationToken.Token), cancellationToken.Token);
-            pollEventsTask.Start();
+            pollEventsTask = ManageServerAsync(millisecondsTimeOutPerPoll, cancellationToken.Token);
 
             return cancellationToken;
+        }
+
+        private async Task ManageServerAsync(int millisecondsTimeOutPerPoll, CancellationToken token)
+        {
+            while (!token.IsCancellationRequested)
+            {
+                //Make this function an automatic seperated thread poll events 
+                //And take int milliseconds as an argument for a thread.sleep() to not overload the CPU
+                PollEvents();
+                await Task.Delay(millisecondsTimeOutPerPoll);
+            }
         }
 
         /// <summary>
@@ -425,8 +404,6 @@ namespace TgenNetProtocol
                 active = false;
                 listener.Close();
             }
-            else
-                TgenLog.Log("The listener is already closed!");
         }
         /// <summary>
         /// Stops the listener then aborts all the connected client before it aborts the thread that listens to incoming clients
@@ -436,6 +413,7 @@ namespace TgenNetProtocol
             if (active && listener != null)
             {
                 Stop();
+                cancellationToken?.Cancel();
                 for (int i = 0; i < AmountOfClients; i++)
                 {
                     ClientInfo client = clients[i];
@@ -443,8 +421,6 @@ namespace TgenNetProtocol
                 }
                     
             }
-            else
-                TgenLog.Log("The listener is already closed!");
         }
 
         /// <summary>

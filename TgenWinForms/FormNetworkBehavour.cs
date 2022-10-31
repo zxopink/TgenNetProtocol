@@ -61,7 +61,6 @@ namespace TgenNetProtocol.WinForms
         }
         private void Add2Attributes()
         {
-            TgenLog.Log("adding " + this.ToString() + " to the list");
             TypeSetter.networkObjects.Add(this);
         }
 
