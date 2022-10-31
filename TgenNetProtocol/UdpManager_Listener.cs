@@ -11,7 +11,7 @@ using Formatter = TgenSerializer.Formatter;
 
 namespace TgenNetProtocol
 {
-    public partial class UdpManager
+    public partial class UdpManager : INetEventListener, IDeliveryEventListener, INtpEventListener, IDisposable
     {
         public void OnConnectionRequest(ConnectionRequest request)
         {

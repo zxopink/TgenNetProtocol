@@ -16,7 +16,7 @@ using Formatter = TgenSerializer.Formatter;
 
 namespace TgenNetProtocol
 {
-    public partial class UdpManager : INetEventListener, IDeliveryEventListener, INtpEventListener, IDisposable
+    public partial class UdpManager
     {
         public bool IsRunning => RUdpClient.IsRunning;
         public IPEndPoint LocalEP => _localEP;
@@ -125,25 +125,25 @@ namespace TgenNetProtocol
         }
 
         #region Connect Methods
-        public NetPeer Connect(string host, int port) =>
+        public virtual NetPeer Connect(string host, int port) =>
             RUdpClient.Connect(host, port, ConnectionKey);
-        public NetPeer Connect(string host, int port, string key) =>
+        public virtual NetPeer Connect(string host, int port, string key) =>
             RUdpClient.Connect(host, port, key);
-        public NetPeer Connect(string host, int port, DataWriter connectionData) =>
+        public virtual NetPeer Connect(string host, int port, DataWriter connectionData) =>
             RUdpClient.Connect(host, port, NetDataWriter.FromBytes(connectionData.GetData(), false));
 
-        public NetPeer Connect(IPEndPoint iPEndPoint) =>
+        public virtual NetPeer Connect(IPEndPoint iPEndPoint) =>
             RUdpClient.Connect(iPEndPoint, ConnectionKey);
-        public NetPeer Connect(IPEndPoint iPEndPoint, string key) =>
+        public virtual NetPeer Connect(IPEndPoint iPEndPoint, string key) =>
             RUdpClient.Connect(iPEndPoint, key);
-        public NetPeer Connect(IPEndPoint iPEndPoint, DataWriter connectionData) =>
+        public virtual NetPeer Connect(IPEndPoint iPEndPoint, DataWriter connectionData) =>
             RUdpClient.Connect(iPEndPoint, NetDataWriter.FromBytes(connectionData.GetData(), false));
 
-        public NetPeer Connect(IPAddress host, int port) =>
+        public virtual NetPeer Connect(IPAddress host, int port) =>
             Connect(new IPEndPoint(host, port));
-        public NetPeer Connect(IPAddress host, int port, string key) =>
+        public virtual NetPeer Connect(IPAddress host, int port, string key) =>
             Connect(new IPEndPoint(host, port), key);
-        public NetPeer Connect(IPAddress host, int port, DataWriter connectionData) =>
+        public virtual NetPeer Connect(IPAddress host, int port, DataWriter connectionData) =>
             Connect(new IPEndPoint(host, port), connectionData);
         #endregion
 
