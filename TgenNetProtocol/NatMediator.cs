@@ -2,8 +2,10 @@
 using Microsoft.Win32.SafeHandles;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Net;
 using System.Text;
+using System.Text.RegularExpressions;
 
 namespace TgenNetProtocol
 {
@@ -16,6 +18,7 @@ namespace TgenNetProtocol
 
         /// <summary>Could be null depending on the NatMediator OnlyAcceptConnectedPeers field</summary>
         public NetPeer NetPeer { get; private set; } = default;
+
         public WaitPeer(IPEndPoint local, IPEndPoint remote, NetPeer peerInstance, string token) 
             : this(local, remote, token)
         {
@@ -28,14 +31,26 @@ namespace TgenNetProtocol
             Remote = remote;
             At = DateTime.Now;
         }
-    }
-    internal class NatMediator : INatPunchListener
-    {
-        public event Action<WaitPeer> OnRequest;
 
+        public void Deconstruct(out IPEndPoint local, out IPEndPoint remote)
+        {
+            local = Local;
+            remote = Remote;
+        }
+    }
+    public class NatMediator : INatPunchListener
+    {
+
+        public delegate (WaitPeer host, WaitPeer client) MatchDelegate(List<WaitPeer> waitingPeers);
+
+        /// <summary>Calls an event on NatIntroductionRequest before the waiting peer is added to the pending peers list</summary>
+        public event Action<WaitPeer> OnRequest;
         public List<WaitPeer> PendingPeers { get; private set; }
         public NetManager Manager { get; private set; }
         public NatPunchModule Module => Manager.NatPunchModule;
+
+        /// <summary>Only accept incoming endpoints from peers who are already connected to the manager. 
+        /// true by default</summary>
         public bool OnlyAcceptConnectedPeers { get; set; } = true;
         public NatMediator(NetManager manager)
         {
@@ -43,6 +58,13 @@ namespace TgenNetProtocol
             Manager = manager;
             Manager.NatPunchEnabled = true;
             Module.Init(this);
+        }
+
+        public void Pair(MatchDelegate MediatorFunc) => Pair(MediatorFunc, string.Empty);
+        public void Pair(MatchDelegate MediatorFunc, string additionalInfo)
+        {
+            (var host, var client) = MediatorFunc(PendingPeers);
+            Introduce(host, client, additionalInfo);
         }
 
         public void Introduce(WaitPeer host, WaitPeer client, string additionalInfo)
