@@ -56,14 +56,16 @@ namespace TgenNetProtocol
         {
             PendingPeers = new List<WaitPeer>();
             Manager = manager;
-            Manager.NatPunchEnabled = true;
             Module.Init(this);
+            Manager.NatPunchEnabled = true;
         }
 
         public void Pair(MatchDelegate MediatorFunc) => Pair(MediatorFunc, string.Empty);
         public void Pair(MatchDelegate MediatorFunc, string additionalInfo)
         {
-            (var host, var client) = MediatorFunc(PendingPeers);
+            (WaitPeer host, WaitPeer client) = MediatorFunc(PendingPeers);
+            PendingPeers.Remove(host);
+            PendingPeers.Remove(client);
             Introduce(host, client, additionalInfo);
         }
 

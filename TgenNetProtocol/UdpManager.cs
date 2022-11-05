@@ -16,7 +16,7 @@ using Formatter = TgenSerializer.Formatter;
 
 namespace TgenNetProtocol
 {
-    public partial class UdpManager
+    public partial class UdpManager : INetManager
     {
         public bool IsRunning => RUdpClient.IsRunning;
         public IPEndPoint LocalEP => _localEP;
@@ -89,15 +89,18 @@ namespace TgenNetProtocol
         public UdpManager(IPEndPoint localEP)
         {
             RUdpClient = new NetManager(this);
-
             _localEP = localEP;
         }
 
         public void Start() =>
             RUdpClient.Start(_localEP.Port);
 
-        public void PollEvents() =>
+        public void PollEvents()
+        {
             RUdpClient.PollEvents();
+            if (NatPunchEnabled)
+                NatPunchModule.PollEvents();
+        }
 
         /// <summary>
         /// Fires a task that polls events async until the instance stops or the cancellation token is called
@@ -115,11 +118,17 @@ namespace TgenNetProtocol
             return TokenSource;
         }
 
+        public Task ManagePollEvents(int millisecondsTimeOutPerPoll, CancellationToken token)
+        {
+            RUdpClient.Start(_localEP.Port);
+            return RunEvents(millisecondsTimeOutPerPoll, token);
+        }
+
         private async Task RunEvents(int millisecondsTimeOutPerPoll, CancellationToken token)
         {
             while (!token.IsCancellationRequested && RUdpClient.IsRunning)
             {
-                RUdpClient.PollEvents();
+                PollEvents();
                 await Task.Delay(millisecondsTimeOutPerPoll);
             }
         }

@@ -19,32 +19,43 @@ namespace TgenNetProtocol
         public Task<NetPeer> RequestNatPunch(string additionalInfo = default)
         {
             var server = RUdpClient.FirstPeer;
-            _ = server ?? throw new NullReferenceException($"{nameof(RUdpClient.FirstPeer)} is null");
+            if(server == null) throw new NullReferenceException($"{nameof(RUdpClient.FirstPeer)} is null");
 
             return RequestNatPunch(server.EndPoint, additionalInfo);
         }
 
-        public Task<NetPeer> RequestNatPunch(IPEndPoint masterServerEndPoint, string additionalInfo = default)
+        public async Task<NetPeer> RequestNatPunch(IPEndPoint masterServerEndPoint, string additionalInfo = default)
         {
-            NatPunchEnabled = true;
-            TaskCompletionSource<NetPeer> peerTask = new TaskCompletionSource<NetPeer>();
+            TaskCompletionSource<NetPeer> intenrnalPeerTask = new TaskCompletionSource<NetPeer>();
+            TaskCompletionSource<NetPeer> externalPeerTask = new TaskCompletionSource<NetPeer>();
             EventBasedNatPunchListener natPunchListener = new EventBasedNatPunchListener();
             natPunchListener.NatIntroductionSuccess += (targetEndPoint, type, token) =>
             {
+                Console.WriteLine(targetEndPoint + " has connected to " + this.LocalEP + " Connection: " + type);
                 OnNatIntroductionSuccess?.Invoke(targetEndPoint, type, token);
                 NetPeer partner = Connect(targetEndPoint, ConnectionKey);
-                peerTask.SetResult(partner);
+
+                if (type == NatAddressType.Internal)
+                    intenrnalPeerTask.SetResult(partner);
+                else
+                    externalPeerTask.SetResult(partner);
             };
+            NatPunchEnabled = true;
             NatPunchModule.Init(natPunchListener);
             NatPunchModule.SendNatIntroduceRequest(masterServerEndPoint, additionalInfo ?? string.Empty);
-            return peerTask.Task;
+
+            var peers = await Task.WhenAll(intenrnalPeerTask.Task, externalPeerTask.Task);
+            while (peers[0].ConnectionState == ConnectionState.Outgoing && peers[1].ConnectionState == ConnectionState.Outgoing)
+                await Task.Delay(20);
+            return peers[0].ConnectionState == ConnectionState.Connected ? peers[0] : peers[1];
         }
 
         /// <summary>Used by the server side to manage Nat punch</summary>
         /// <returns>A NatMediator instance</returns>
-        public NatMediator CreateNatMediator()
-        {
-            return new NatMediator(RUdpClient);
-        }
+        public NatMediator NatMediator => GetNatMediator();
+
+        private NatMediator _natMediator = default; //Singleton
+        private NatMediator GetNatMediator() =>
+            _natMediator = _natMediator ?? new NatMediator(RUdpClient);
     }
 }

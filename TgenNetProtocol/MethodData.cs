@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
+using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -105,6 +106,9 @@ namespace TgenNetProtocol
             _method(netObject);
         public void Invoke(dynamic netObject, INetInfo netInfo) =>
             _method(netObject, (dynamic)netInfo);
+
+        public static explicit operator MethodData(Delegate method) =>
+            new MethodData(method.Method, method.Target ?? throw new NullReferenceException("MethodData's parent cannot be null"));
 
         //objects must be dynamic, the run-time doesn't look at the object type but the variable type
         //Best way is to keep the variable dynamic

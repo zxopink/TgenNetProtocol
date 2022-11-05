@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace TgenNetProtocol
 {
@@ -14,12 +15,12 @@ namespace TgenNetProtocol
         /// </summary>
         public volatile static bool isWorking = false;
 
-        internal static void Add(INetworkObject obj)
+        public static void Add(INetworkObject obj)
         {
             networkObjects.Add(obj);
         }
 
-        internal static void Remove(INetworkObject obj)
+        public static void Remove(INetworkObject obj)
         {
             int index = networkObjects.IndexOf(obj);
             if (index != -1) //Found
@@ -33,13 +34,14 @@ namespace TgenNetProtocol
         /// </summary>
         /// <param name="message">The sent object (Payload)</param>
         /// <param name="clientInfo">The client who sent the info</param>
-        internal static void SendNewServerMessage(object message, ClientInfo clientInfo)
+        internal static void SendNewServerMessage(object message, ClientInfo clientInfo, INetManager caller)
         {
             isWorking = true;
             for (int i = 0; i < networkObjects.Count; i++)
             {
                 INetworkObject networkObject = networkObjects[i];
-                if (networkObject == null)
+                if (networkObject == default 
+                    || (networkObject.NetManagers.Length != 0 && networkObject.NetManagers.Contains(caller)))
                     continue;
 
                 // get method by name,  or loop through all methods
@@ -58,13 +60,14 @@ namespace TgenNetProtocol
         /// this method invokes client network methods on all active network objects
         /// </summary>
         /// <param name="message">The sent object (Payload)</param>
-        internal static void SendNewClientMessage(object message)
+        internal static void SendNewClientMessage(object message, INetManager caller)
         {
             isWorking = true;
             for (int i = 0; i < networkObjects.Count; i++)
             {
                 INetworkObject networkObject = networkObjects[i];
-                if (networkObject == null)
+                if (networkObject == default
+                    || (networkObject.NetManagers.Length != 0 && networkObject.NetManagers.Contains(caller)))
                     continue;
 
                 // get method by name,  or loop through all methods
@@ -84,13 +87,14 @@ namespace TgenNetProtocol
         /// </summary>
         /// <param name="message">The sent object (Payload)</param>
         /// <param name="packetData">The client who sent the info</param>
-        internal static void SendNewDatagramMessage(object message, UdpInfo packetData)
+        internal static void SendNewDatagramMessage(object message, UdpInfo packetData, INetManager caller)
         {
             isWorking = true;
             for (int i = 0; i < networkObjects.Count; i++)
             {
                 INetworkObject networkObject = networkObjects[i];
-                if (networkObject == null)
+                if (networkObject == default
+                    || (networkObject.NetManagers.Length != 0 && !networkObject.NetManagers.Contains(caller)))
                     continue;
 
                 // get method by name,  or loop through all methods
@@ -121,6 +125,13 @@ namespace TgenNetProtocol
             foreach (var method in methodsInfo)
                 if (method.ParameterType.IsAssignableFrom(message.GetType()))
                     networkObject.InvokeNetworkMethods(method, new object[] { message });
+        }
+
+        private static void NetworkObjHandler(List<MethodData> methodsInfo, object message)
+        {
+            foreach (var method in methodsInfo)
+                if (method.ParameterType.IsAssignableFrom(message.GetType()))
+                    method.Invoke(message);
         }
 
         private static void CleanNullObjects() =>

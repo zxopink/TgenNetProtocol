@@ -27,11 +27,20 @@ namespace TgenNetProtocol
         public List<MethodData> ClientMethods => NetworkMethods[typeof(ClientReceiverAttribute)];
         public List<MethodData> DgramMethods => NetworkMethods[typeof(DgramReceiverAttribute)];
 
+        /// <summary>The Netmanagers this instance listens to.
+        /// if not set, listens to all active Netmanagers</summary>
+        public INetManager[] NetManagers { get; private set; } = Array.Empty<INetManager>();
+
         public NetworkBehavour()
         {
             SetUpMethods();
 
             AddToAttributes();
+        }
+
+        public NetworkBehavour(params INetManager[] Managers) : this()
+        {
+            NetManagers = Managers;
         }
 
         public virtual void SetUpMethods()

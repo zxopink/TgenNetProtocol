@@ -9,9 +9,23 @@ namespace TgenNetProtocol.WinForms
 {
     public partial class FormNetworkBehavour : Form, INetworkObject
     {
-        public List<MethodData> ServerMethods { get; private set; }
-        public List<MethodData> ClientMethods { get; private set; }
-        public List<MethodData> DgramMethods { get; private set; }
+        public static readonly Dictionary<Type/*Object Type*/,
+            Dictionary<Type /*Attribute type*/, List<MethodData> /*Methods of object*/>> TotalNetMethods = new Dictionary<Type, Dictionary<Type, List<MethodData>>>();
+
+        protected Dictionary<Type /*Attriute type*/, List<MethodData> /*Methods*/> NetworkMethods = new Dictionary<Type, List<MethodData>>()
+        {
+                { typeof(ServerReceiverAttribute), new List<MethodData>() },
+                { typeof(ClientReceiverAttribute), new List<MethodData>() },
+                { typeof(DgramReceiverAttribute), new List<MethodData>() }
+        };
+
+        public List<MethodData> ServerMethods => NetworkMethods[typeof(ServerReceiverAttribute)];
+        public List<MethodData> ClientMethods => NetworkMethods[typeof(ClientReceiverAttribute)];
+        public List<MethodData> DgramMethods => NetworkMethods[typeof(DgramReceiverAttribute)];
+
+        /// <summary>The Netmanagers this instance listens to.
+        /// if not set, listens to all active Netmanagers</summary>
+        public INetManager[] NetManagers { get; private set; } = Array.Empty<INetManager>();
 
         public FormNetworkBehavour()
         {
@@ -20,86 +34,71 @@ namespace TgenNetProtocol.WinForms
         }
 
         private void FormReady(object sender, EventArgs e) =>
-            Add2Attributes();//Task.Run(AddToAttributes);
+            AddToAttributes();
 
-        public void SetUpMethods()
+        public FormNetworkBehavour(params INetManager[] Managers) : this()
         {
-            MethodInfo[] methods = GetType().GetMethods(BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Instance | BindingFlags.FlattenHierarchy | BindingFlags.InvokeMethod);
-            IEnumerable<MethodInfo> serverActions = methods.Where(x => x.GetCustomAttributes(typeof(ServerReceiverAttribute), false).FirstOrDefault() != null);
-            IEnumerable<MethodInfo> clientActions = methods.Where(x => x.GetCustomAttributes(typeof(ClientReceiverAttribute), false).FirstOrDefault() != null);
-            IEnumerable<MethodInfo> dgramAction = methods.Where(x => x.GetCustomAttributes(typeof(DgramReceiverAttribute), false).FirstOrDefault() != null);
+            NetManagers = Managers;
+        }
 
-            ServerMethods = GetMethodsData(serverActions);
-            ClientMethods = GetMethodsData(clientActions);
-            DgramMethods = GetMethodsData(dgramAction);
+        public virtual void SetUpMethods()
+        {
+            Type thisType = GetType();
+            if (!TotalNetMethods.TryGetValue(thisType, out var typeMethods))
+            {
+                SetTypeMethods();
+                return;
+            }
+            foreach (var attribute in typeMethods.Keys)
+            {
+                List<MethodData> newTargetedMethods = typeMethods[attribute].Select(method => method.ChangeTarget(this)).ToList();
+                NetworkMethods[attribute] = newTargetedMethods;
+            }
+        }
+
+        protected virtual void SetTypeMethods()
+        {
+            Type thisType = GetType();
+            //Gets public/private/(public inherited) methods
+            MethodInfo[] methods = thisType.GetMethods(BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Instance | BindingFlags.FlattenHierarchy | BindingFlags.InvokeMethod);
+
+            foreach (var attribute in NetworkMethods.Keys)
+            {
+                var actions = methods.Where(x => x.GetCustomAttributes(attribute, false).FirstOrDefault() != null);
+                var actionsData = GetMethodsData(actions);
+                NetworkMethods[attribute] = actionsData;
+            }
+
+            TotalNetMethods.Add(thisType, NetworkMethods);
         }
 
         private List<MethodData> GetMethodsData(IEnumerable<MethodInfo> methods)
         {
-            List<MethodData> methodDatas = new List<MethodData>();
+            List<MethodData> methodsData = new List<MethodData>();
             foreach (MethodInfo item in methods)
-                methodDatas.Add(new MethodData(item, this));
+                methodsData.Add(new MethodData(item, this));
 
-            return methodDatas;
+            return methodsData;
         }
 
-        /// <summary>
-        /// This method makes sure the other threads that sends message isn't getting effected while it's active
-        /// Things can break if two thread work on the same variable/method
-        /// </summary>
-        private void AddToAttributes()
+        protected virtual void AddToAttributes()
         {
-            bool isDone = false;
-            while (!isDone)
-            {
-                if (!TypeSetter.isWorking)
-                {
-                    TypeSetter.networkObjects.Add(this);
-                    isDone = true;
-                }
-            }
+            TypeSetter.Add(this);
         }
-        private void Add2Attributes()
+
+        protected virtual void RemoveFromAttributes()
         {
-            TypeSetter.networkObjects.Add(this);
+            TypeSetter.Remove(this);
+            NetworkMethods.Clear();
         }
 
-        private void RemoveFromAttributes()
-        {
-            bool isDone = false;
-            while (!isDone)
-            {
-                if (!TypeSetter.isWorking)
-                {
-                    TypeSetter.networkObjects.Remove(this);
-                    isDone = true;
-                }
-                ServerMethods.Clear();
-                ClientMethods.Clear();
-                DgramMethods.Clear();
-            }
-        }
-
-        private void Remove2Attributes()
-        {
-            int index = TypeSetter.networkObjects.IndexOf(this);
-            if (index != -1) //Found
-                TypeSetter.networkObjects[index] = null;
-
-            ServerMethods.Clear();
-            ClientMethods.Clear();
-            DgramMethods.Clear();
-        }
-
-#pragma warning disable CS0108 // 'FormNetworkBehavour.Dispose()' hides inherited member 'Component.Dispose()'. Use the new keyword if hiding was intended.
-        //Hiding isn't intended as it is used for basic dispose, this one is for network dispose
         /// <summary>
         /// Removes the object's methods from the network calls
         /// </summary>
-        public void Dispose()
+        public new virtual void Dispose()
         {
             //Task.Run(RemoveFromAttributes);
-            Remove2Attributes();
+            RemoveFromAttributes();
             base.Dispose(true);
         }
 

@@ -4,11 +4,15 @@ using System.Reflection;
 
 namespace TgenNetProtocol
 {
+    //Classes like ServerManager, ClientManger and UdpManager
+    public interface INetManager { }
     public interface INetworkObject : IDisposable
     {
         List<MethodData> ServerMethods { get; }
         List<MethodData> ClientMethods { get; }
         List<MethodData> DgramMethods { get; }
+
+        INetManager[] NetManagers { get; }
 
         void SetUpMethods();
 
