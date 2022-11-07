@@ -148,6 +148,7 @@ namespace TgenNetProtocol
         public void Close()
         {
             cancellationToken?.Cancel();
+            cancellationToken?.Dispose();
             client.Close();
             client = new Client(GetNewSocket());
         }
@@ -212,12 +213,12 @@ namespace TgenNetProtocol
                 return cancellationToken;
 
             cancellationToken = new CancellationTokenSource();
-            pollEventsTask = ManageClientAsync(millisecondsTimeOutPerPoll, cancellationToken.Token);
+            pollEventsTask = ManagePollEvents(millisecondsTimeOutPerPoll, cancellationToken.Token);
             
             return cancellationToken;
         }
 
-        private async Task ManageClientAsync(int millisecondsTimeOutPerPoll, CancellationToken token)
+        public async Task ManagePollEvents(int millisecondsTimeOutPerPoll, CancellationToken token)
         {
             while (client && !token.IsCancellationRequested)
             {

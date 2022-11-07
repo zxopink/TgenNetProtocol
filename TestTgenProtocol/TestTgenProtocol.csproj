@@ -20,4 +20,8 @@
     <ProjectReference Include="..\TgenNetProtocol\TgenNetProtocol.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="P2PTests\" />
+  </ItemGroup>
+
 </Project>

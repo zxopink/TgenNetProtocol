@@ -31,6 +31,24 @@ namespace TgenNetProtocol
             return taskSource.Task;
         }
 
+        /// <returns>The value or default if value wasn't returned within the set timeout</returns>
+        public async Task<T> WaitFor<T>(ClientInfo client, int millisecondsTimeout)
+        {
+            Task<T> waitTask = WaitFor<T>(client);
+            Task timeout = Task.Delay(millisecondsTimeout);
+            Task result = Task.WhenAny(waitTask, timeout);
+            return result == timeout ? default : await waitTask;
+        }
+
+        /// <returns>The value or default if value wasn't returned within the set timeout</returns>
+        public async Task<object> WaitFor(Type type, ClientInfo client, int millisecondsTimeout)
+        {
+            Task<object> waitTask = WaitFor(type, client);
+            Task timeout = Task.Delay(millisecondsTimeout);
+            Task result = Task.WhenAny(waitTask, timeout);
+            return result == timeout ? default : await waitTask;
+        }
+
         private void OnPacket(object obj, ClientInfo client)
         {
             Type t = obj.GetType();
@@ -38,6 +56,7 @@ namespace TgenNetProtocol
             {
                 foreach (var req in requests)
                     req.SetResult(obj);
+                AwaitingRequests.Remove((t, client));
             }
         }
     }

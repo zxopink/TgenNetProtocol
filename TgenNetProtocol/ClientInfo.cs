@@ -23,10 +23,13 @@ namespace TgenNetProtocol
             this.id = id;
         }
 
+        public override bool Equals(object other)
+        {
+            return other is ClientInfo otherInfo ? otherInfo.id == id : false;
+        }
         public bool Equals(INetInfo clientData)
         {
-            ClientInfo data = (ClientInfo)clientData;
-            return data.id == data;
+            return Equals(clientData);
         }
 
         public static implicit operator int(ClientInfo clientData) => clientData.id;

@@ -321,6 +321,12 @@ namespace TgenNetProtocol
                 throw new SocketException((int)SocketError.NotConnected);
         }
 
+        public void Send(object Message, IEnumerable<ClientInfo> clients, bool throwOnError = false)
+        {
+            foreach (var client in clients)
+                Send(Message, client, throwOnError);
+        }
+
         /// <summary>
         /// Sends a message to all connected client,
         /// </summary>
@@ -379,12 +385,12 @@ namespace TgenNetProtocol
                 return cancellationToken;
 
             cancellationToken = new CancellationTokenSource();
-            pollEventsTask = ManageServerAsync(millisecondsTimeOutPerPoll, cancellationToken.Token);
+            pollEventsTask = ManagePollEvents(millisecondsTimeOutPerPoll, cancellationToken.Token);
 
             return cancellationToken;
         }
 
-        private async Task ManageServerAsync(int millisecondsTimeOutPerPoll, CancellationToken token)
+        public async Task ManagePollEvents(int millisecondsTimeOutPerPoll, CancellationToken token)
         {
             while (!token.IsCancellationRequested)
             {
@@ -416,6 +422,7 @@ namespace TgenNetProtocol
             {
                 Stop();
                 cancellationToken?.Cancel();
+                cancellationToken?.Dispose();
                 for (int i = 0; i < AmountOfClients; i++)
                 {
                     ClientInfo client = clients[i];
