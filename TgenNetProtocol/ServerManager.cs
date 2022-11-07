@@ -9,7 +9,7 @@ using System.Runtime.Serialization;
 
 namespace TgenNetProtocol
 {
-    public class ServerManager : IDisposable, INetManager
+    public partial class ServerManager : IDisposable, INetManager
     {
         private Task pollEventsTask;
         private CancellationTokenSource cancellationToken;
@@ -231,9 +231,10 @@ namespace TgenNetProtocol
             {
                 if (!stm.DataAvailable) return;
                 object message = Formatter.Deserialize(stm);
+                OnPacket(message, client);
                 TypeSetter.SendNewServerMessage(message, client, this);
             }
-            //the program WILL crash when client hangs the server
+            //the listener WILL crash when client hangs the server
             //the catch makes sure to handle the program properly when a client leaves
             catch (Microsoft.CSharp.RuntimeBinder.RuntimeBinderException e)
             {
@@ -313,6 +314,7 @@ namespace TgenNetProtocol
                     NetworkStream stm = client;
                     Formatter.Serialize(stm, Message);
                 }
+                catch (SerializationException) { throw; } //Message cannot be serialized
                 catch (Exception e) { if (throwOnError) throw; /*client left as the message was serialized*/ }
             }
             else

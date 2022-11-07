@@ -8,7 +8,7 @@ using System.Runtime.Serialization;
 
 namespace TgenNetProtocol
 {
-    public class ClientManager : IDisposable, INetManager
+    public partial class ClientManager : IDisposable, INetManager
     {
         private Task pollEventsTask;
         private CancellationTokenSource cancellationToken;
@@ -173,6 +173,8 @@ namespace TgenNetProtocol
             }
         }
 
+        public void Send<T>(bool throwOnError = false) where T : new() => Send(new T());
+
         public void PollEvents()
         {
             if (!client) //If not connected
@@ -194,6 +196,7 @@ namespace TgenNetProtocol
             if (stm.DataAvailable && !client.IsControlled)
             {
                 object message = Formatter.Deserialize(stm);
+                OnPacket(message);
                 TypeSetter.SendNewClientMessage(message, this);
             }
         }
