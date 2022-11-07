@@ -43,14 +43,6 @@ namespace TgenNetProtocol
             Task result = Task.WhenAny(waitTask, timeout);
             return result == timeout ? default : await waitTask;
         }
-        //public IEnumerable<Type> GetAssignables(Type t)
-        //{
-        //    foreach (var type in AwaitingRequests.Keys)
-        //    {
-        //        if (type.IsAssignableFrom(t))
-        //            yield return type;
-        //    }
-        //}
 
         private void OnPacket(object obj)
         {
@@ -60,6 +52,39 @@ namespace TgenNetProtocol
                 foreach (var req in requests)
                     req.SetResult(obj);
                 AwaitingRequests.Remove(t);
+            }
+        }
+
+        //////////////////////////////////////Registered Methods/////////////////////////////////////////////////////
+        private Dictionary<Type, List<MethodData>> RegisteredMethods { get; set; } =
+            new Dictionary<Type, List<MethodData>>();
+
+        public void Register<T>(Action<T> method) => Register(method);
+        private void Register(Delegate meth)
+        {
+            MethodData data = (MethodData)meth;
+            if (RegisteredMethods.TryGetValue(data.ParameterType, out var methods))
+            {
+                methods.Add(data);
+            }
+            else
+            {
+                List<MethodData> list = new List<MethodData>();
+                list.Add(data);
+                RegisteredMethods.Add(data.ParameterType, list);
+            }
+        }
+
+        private void CallRegisters(object message)
+        {
+            Type t = message.GetType();
+            if (RegisteredMethods.TryGetValue(t, out var list))
+            {
+                for (int i = 0; i < list.Count; i++)
+                {
+                    MethodData meth = list[i];
+                    meth.Invoke(message);
+                }
             }
         }
     }

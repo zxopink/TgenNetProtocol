@@ -232,6 +232,7 @@ namespace TgenNetProtocol
                 if (!stm.DataAvailable) return;
                 object message = Formatter.Deserialize(stm);
                 OnPacket(message, client);
+                CallRegisters(message, client);
                 TypeSetter.SendNewServerMessage(message, client, this);
             }
             //the listener WILL crash when client hangs the server
