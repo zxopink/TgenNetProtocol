@@ -7,10 +7,10 @@ using TgenNetProtocol;
 
 //var summery = BenchmarkRunner.Run<DynamicBench>();
 var summery = BenchmarkRunner.Run<Instantiation>();
-ServerManager s = new(6567);
-s.Register(mt);
+ClientManager s = new();
+s.Register<int>(mt);
 
-void mt()
+void mt(int i)
 {
     
 }

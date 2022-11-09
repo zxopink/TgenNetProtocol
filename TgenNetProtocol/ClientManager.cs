@@ -198,6 +198,7 @@ namespace TgenNetProtocol
             {
                 object message = Formatter.Deserialize(stm);
                 OnPacket(message);
+                CallRegisters(message);
                 TypeSetter.SendNewClientMessage(message, this);
             }
         }

@@ -102,6 +102,22 @@ namespace TgenNetProtocol
                 _method(parameters[0]);
         }
 
+        public override bool Equals(object obj)
+        {
+            if (obj is Delegate del)
+            {
+                return Method.Equals(del);
+            }
+            else if (obj is MethodData data)
+            {
+                return Method.Equals(data.Method);
+            }
+            return false;
+        }
+
+        public static bool operator ==(MethodData a, MethodData b) => a.Equals(b);
+        public static bool operator !=(MethodData a, MethodData b) => !a.Equals(b);
+
         public void Invoke(dynamic netObject) =>
             _method(netObject);
         public void Invoke(dynamic netObject, INetInfo netInfo) =>

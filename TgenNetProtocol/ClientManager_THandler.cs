@@ -59,7 +59,7 @@ namespace TgenNetProtocol
         private Dictionary<Type, List<MethodData>> RegisteredMethods { get; set; } =
             new Dictionary<Type, List<MethodData>>();
 
-        public void Register<T>(Action<T> method) => Register(method);
+        public void Register<T>(Action<T> method) => Register((Delegate)method);
         private void Register(Delegate meth)
         {
             MethodData data = (MethodData)meth;
@@ -73,6 +73,24 @@ namespace TgenNetProtocol
                 list.Add(data);
                 RegisteredMethods.Add(data.ParameterType, list);
             }
+        }
+
+        public void Unregister<T>(Action<T> method) => Unregister((Delegate)method);
+        private bool Unregister(Delegate meth)
+        {
+            MethodData data = (MethodData)meth;
+            Type type = data.ParameterType;
+            if (RegisteredMethods.TryGetValue(type, out var methods))
+                for (int i = 0; i < methods.Count; i++)
+                    if (methods[i] == data)
+                    {
+                        methods.RemoveAt(i);
+                        if (methods.Count == 0)
+                            RegisteredMethods.Remove(type);
+                        return true;
+                    }
+
+            return false;
         }
 
         private void CallRegisters(object message)
