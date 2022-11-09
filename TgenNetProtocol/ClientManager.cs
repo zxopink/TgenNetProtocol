@@ -226,7 +226,7 @@ namespace TgenNetProtocol
                 //Make this function an automatic seperated thread poll events 
                 //And take int milliseconds as an argument for a thread.sleep() to not overload the CPU
                 PollEvents();
-                await Task.Delay(millisecondsTimeOutPerPoll);
+                await Task.Delay(millisecondsTimeOutPerPoll, token);
             }
         }
 

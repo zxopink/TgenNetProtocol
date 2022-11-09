@@ -7,8 +7,8 @@ namespace TgenNetProtocol
 {
     public partial class ServerManager //TYPE HANDLER
     {
-        private Dictionary<(Type type, ClientInfo sender), Stack<TaskCompletionSource<object>>> AwaitingRequests { get; set; } =
-            new Dictionary<(Type type, ClientInfo sender), Stack<TaskCompletionSource<object>>>();
+        private Dictionary<(Type type, ClientInfo sender), List<TaskCompletionSource<object>>> AwaitingRequests { get; set; } =
+            new Dictionary<(Type type, ClientInfo sender), List<TaskCompletionSource<object>>>();
 
         /// <summary>Waits for the client to send the type</summary>
         /// <typeparam name="T">The awaiting type</typeparam>
@@ -20,12 +20,12 @@ namespace TgenNetProtocol
         {
             var taskSource = new TaskCompletionSource<object>();
             if (AwaitingRequests.TryGetValue((type, sender), out var reqs))
-                reqs.Push(taskSource);
+                reqs.Add(taskSource);
             else
             {
-                var reqsStack = new Stack<TaskCompletionSource<object>>();
-                reqsStack.Push(taskSource);
-                AwaitingRequests.Add((type, sender), reqsStack);
+                var reqsList = new List<TaskCompletionSource<object>>();
+                reqsList.Add(taskSource);
+                AwaitingRequests.Add((type, sender), reqsList);
             }
             return taskSource.Task;
         }
@@ -35,8 +35,13 @@ namespace TgenNetProtocol
         {
             Task<T> waitTask = WaitFor<T>(client);
             Task timeout = Task.Delay(millisecondsTimeout);
-            Task result = Task.WhenAny(waitTask, timeout);
-            return result == timeout ? default : await waitTask;
+            Task result = await Task.WhenAny(waitTask, timeout);
+            if (result == timeout)
+            {
+                RemoveWaitingTask(typeof(T), client, waitTask);
+                return default;
+            }
+            return await waitTask;
         }
 
         /// <returns>The value or default if value wasn't returned within the set timeout</returns>
@@ -44,8 +49,27 @@ namespace TgenNetProtocol
         {
             Task<object> waitTask = WaitFor(type, client);
             Task timeout = Task.Delay(millisecondsTimeout);
-            Task result = Task.WhenAny(waitTask, timeout);
-            return result == timeout ? default : await waitTask;
+            Task result = await Task.WhenAny(waitTask, timeout);
+            if (result == timeout)
+            {
+                RemoveWaitingTask(type, client, waitTask);
+                return default;
+            }
+            return await waitTask;
+        }
+        private void RemoveWaitingTask(Type type, ClientInfo client, Task task)
+        {
+            var key = (type, client);
+            if (AwaitingRequests.TryGetValue(key, out var reqs))
+            {
+                for (int i = 0; i < reqs.Count; i++)
+                {
+                    if (task == reqs[i].Task)
+                        reqs.RemoveAt(i);
+                    if (reqs.Count == 0)
+                        AwaitingRequests.Remove(key);
+                }
+            }
         }
 
         private void OnPacket(object obj, ClientInfo client)

@@ -41,7 +41,7 @@ namespace TgenNetProtocol
             {
                 INetworkObject networkObject = networkObjects[i];
                 if (networkObject == default 
-                    || (networkObject.NetManagers.Length != 0 && networkObject.NetManagers.Contains(caller)))
+                    || (networkObject.NetManagers.Length != 0 && !networkObject.NetManagers.Contains(caller)))
                     continue;
 
                 // get method by name,  or loop through all methods
@@ -67,7 +67,7 @@ namespace TgenNetProtocol
             {
                 INetworkObject networkObject = networkObjects[i];
                 if (networkObject == default
-                    || (networkObject.NetManagers.Length != 0 && networkObject.NetManagers.Contains(caller)))
+                    || (networkObject.NetManagers.Length != 0 && !networkObject.NetManagers.Contains(caller)))
                     continue;
 
                 // get method by name,  or loop through all methods

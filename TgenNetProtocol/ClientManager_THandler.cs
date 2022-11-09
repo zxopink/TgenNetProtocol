@@ -1,14 +1,15 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace TgenNetProtocol
 {
     public partial class ClientManager
     {
-        private Dictionary<Type, Stack<TaskCompletionSource<object>>> AwaitingRequests { get; set; } =
-            new Dictionary<Type, Stack<TaskCompletionSource<object>>>();
+        private Dictionary<Type, List<TaskCompletionSource<object>>> AwaitingRequests { get; set; } =
+            new Dictionary<Type, List<TaskCompletionSource<object>>>();
 
         public async Task<T> WaitFor<T>() => (T)await WaitFor(typeof(T));
 
@@ -16,11 +17,11 @@ namespace TgenNetProtocol
         {
             var taskSource = new TaskCompletionSource<object>();
             if (AwaitingRequests.TryGetValue(type, out var reqs))
-                reqs.Push(taskSource);
+                reqs.Add(taskSource);
             else
             {
-                var reqsStack = new Stack<TaskCompletionSource<object>>();
-                reqsStack.Push(taskSource);
+                var reqsStack = new List<TaskCompletionSource<object>>();
+                reqsStack.Add(taskSource);
                 AwaitingRequests.Add(type, reqsStack);
             }
             return taskSource.Task;
@@ -31,8 +32,13 @@ namespace TgenNetProtocol
         {
             Task<T> waitTask = WaitFor<T>();
             Task timeout = Task.Delay(millisecondsTimeout);
-            Task result = Task.WhenAny(waitTask, timeout);
-            return result == timeout ? default : await waitTask;
+            Task result = await Task.WhenAny(waitTask, timeout);
+            if (result == timeout)
+            {
+                RemoveWaitingTask(typeof(T), waitTask);
+                return default;
+            }
+            return await waitTask;
         }
 
         /// <returns>The value or default if value wasn't returned within the set timeout</returns>
@@ -40,8 +46,27 @@ namespace TgenNetProtocol
         {
             Task<object> waitTask = WaitFor(type);
             Task timeout = Task.Delay(millisecondsTimeout);
-            Task result = Task.WhenAny(waitTask, timeout);
-            return result == timeout ? default : await waitTask;
+            Task result = await Task.WhenAny(waitTask, timeout);
+            if (result == timeout)
+            {
+                RemoveWaitingTask(type, waitTask);
+                return default;
+            }
+            return await waitTask;
+        }
+
+        private void RemoveWaitingTask(Type type, Task task)
+        {
+            if (AwaitingRequests.TryGetValue(type, out var reqs))
+            {
+                for (int i = 0; i < reqs.Count; i++)
+                {
+                    if (task == reqs[i].Task)
+                        reqs.RemoveAt(i);
+                    if (reqs.Count == 0)
+                        AwaitingRequests.Remove(type);
+                }
+            }
         }
 
         private void OnPacket(object obj)
