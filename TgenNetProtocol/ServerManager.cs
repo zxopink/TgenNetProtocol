@@ -178,12 +178,12 @@ namespace TgenNetProtocol
             if(!approved)
             {
                 ClientDeclineEvent?.Invoke(info);
-                info.client.Socket.Send(new byte[] { 0 /*FAILED*/});
-                info.client.Close();
+                info.Client.Socket.Send(new byte[] { 0 /*FAILED*/});
+                info.Client.Close();
                 return;
             }
 
-            info.client.Socket.Send(new byte[] { 200 /*200 OK*/});
+            info.Client.Socket.Send(new byte[] { 200 /*200 OK*/});
 
             clientsCount++;
             clients.Add(data.clientInfo);
@@ -197,7 +197,7 @@ namespace TgenNetProtocol
             if (passKey == null)
                 return true;
 
-            Socket s = info.client.Socket;
+            Socket s = info.Client.Socket;
 
             bool result = false;
             ArraySegment<byte> seg = new ArraySegment<byte>(new byte[passKey.Length]);
@@ -225,7 +225,7 @@ namespace TgenNetProtocol
 
         private void HandleClientPacket(ClientInfo client)
         {
-            if (client.client.IsControlled) return;
+            if (client.Client.IsControlled) return;
             NetworkStream stm = client;
             try
             {
@@ -308,18 +308,13 @@ namespace TgenNetProtocol
         /// <param name="throwOnError">Throw exception on failed send</param>
         public void Send(object Message, ClientInfo client, bool throwOnError = false)
         {
-            if (client)
+            try
             {
-                try
-                {
-                    NetworkStream stm = client;
-                    Formatter.Serialize(stm, Message);
-                }
-                catch (SerializationException) { throw; } //Message cannot be serialized
-                catch (Exception e) { if (throwOnError) throw; /*client left as the message was serialized*/ }
+                NetworkStream stm = client;
+                Formatter.Serialize(stm, Message);
             }
-            else
-                throw new SocketException((int)SocketError.NotConnected);
+            catch (SerializationException) { throw; } //Message cannot be serialized
+            catch (Exception e) { if (throwOnError) throw; /*client left as the message was serialized*/ }
         }
 
         public void Send(object Message, IEnumerable<ClientInfo> clients, bool throwOnError = false)
@@ -357,7 +352,7 @@ namespace TgenNetProtocol
             for (int i = 0; i < AmountOfClients; i++)
             {
                 ClientInfo currentClient = clients[i];
-                if (currentClient.id != client.id)
+                if (currentClient.Id != client.Id)
                     Send(Message, currentClient, throwOnError);
             }
         }

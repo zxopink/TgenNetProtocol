@@ -1,4 +1,5 @@
-﻿using System.Net;
+﻿using System.Collections.Generic;
+using System.Net;
 using System.Net.Sockets;
 
 namespace TgenNetProtocol
@@ -6,38 +7,47 @@ namespace TgenNetProtocol
     /// <summary>
     /// A struct made to keep track of clients for the serverManager
     /// </summary>
-    public struct ClientInfo : INetInfo
+    public class ClientInfo : INetInfo
     {
-        public IPEndPoint EndPoint { get => (IPEndPoint)client.RemoteEndPoint; }
-        public Client client;
-        public int id;
+        public IPEndPoint EndPoint { get => (IPEndPoint)Client.RemoteEndPoint; }
+        public bool Connected { get => Client.IsActive; }
+        public Client Client { get; private set; }
+        public int Id { get; private set; }
 
         public ClientInfo(Client client, int id)
         {
-            this.client = client;
-            this.id = id;
+            Client = client;
+            Id = id;
         }
         public ClientInfo(Socket socket, int id)
         {
-            client = (Client)socket;
-            this.id = id;
+            Client = (Client)socket;
+            Id = id;
         }
 
         public override bool Equals(object other)
         {
-            return other is ClientInfo otherInfo ? otherInfo.id == id : false;
+            return other is ClientInfo otherInfo ? otherInfo.Id == Id : false;
         }
-        public bool Equals(INetInfo clientData)
+        public bool Equals(INetInfo clientData) =>
+            Equals((object)clientData);
+
+        public static implicit operator int(ClientInfo clientData) => clientData.Id;
+        public static implicit operator bool(ClientInfo clientData) => clientData.Client;
+        public static implicit operator NetworkStream(ClientInfo client) => client.Client;
+        public static implicit operator Socket(ClientInfo client) => client.Client;
+
+        public override string ToString() => Id.ToString();
+
+        public override int GetHashCode()
         {
-            return Equals(clientData);
+            int hashCode = 1269177722;
+            hashCode = hashCode * -1521134295 + EqualityComparer<IPEndPoint>.Default.GetHashCode(EndPoint);
+            hashCode = hashCode * -1521134295 + Connected.GetHashCode();
+            hashCode = hashCode * -1521134295 + EqualityComparer<Client>.Default.GetHashCode(Client);
+            hashCode = hashCode * -1521134295 + Id.GetHashCode();
+            return hashCode;
         }
-
-        public static implicit operator int(ClientInfo clientData) => clientData.id;
-        public static implicit operator bool(ClientInfo clientData) => clientData.client;
-        public static implicit operator NetworkStream(ClientInfo client) => client.client;
-        public static implicit operator Socket(ClientInfo client) => client.client;
-
-        public override string ToString() => id.ToString();
 
         public static bool operator ==(ClientInfo a, ClientInfo b)
         => a.Equals(b);
