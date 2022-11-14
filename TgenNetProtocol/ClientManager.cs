@@ -186,7 +186,7 @@ namespace TgenNetProtocol
             }
             catch (Exception)
             {
-                OnDisconnect?.Invoke();
+                //Packet faliure, doesn't mean the socket is unavailable
             }
             
         }
