@@ -414,16 +414,23 @@ namespace TgenNetProtocol
         /// </summary>
         public void Close()
         {
-            if (active && listener != null)
+            try
             {
-                Stop();
-                cancellationToken?.Cancel();
-                cancellationToken?.Dispose();
-                for (int i = 0; i < AmountOfClients; i++)
+                if (active && listener != null)
                 {
-                    ClientInfo client = clients[i];
-                    DropClient(client);
+                    Stop();
+                    for (int i = 0; i < AmountOfClients; i++)
+                    {
+                        ClientInfo client = clients[i];
+                        DropClient(client);
+                    }
+                    cancellationToken?.Cancel();
+                    cancellationToken?.Dispose();
                 }
+            }
+            catch (Exception)
+            {
+
             }
         }
 
