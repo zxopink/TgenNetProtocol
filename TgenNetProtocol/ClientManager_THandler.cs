@@ -28,12 +28,16 @@ namespace TgenNetProtocol
         }
 
         /// <returns>The value or default if value wasn't returned within the set timeout</returns>
-        public async Task<T> WaitFor<T>(int millisecondsTimeout)
+        public Task<T> WaitFor<T>(int millisecondsTimeout) =>
+            WaitFor<T>(TimeSpan.FromMilliseconds(millisecondsTimeout));
+
+        /// <returns>The value or default if value wasn't returned within the set timeout</returns>
+        public async Task<T> WaitFor<T>(TimeSpan timeout)
         {
             Task<T> waitTask = WaitFor<T>();
-            Task timeout = Task.Delay(millisecondsTimeout);
-            Task result = await Task.WhenAny(waitTask, timeout);
-            if (result == timeout)
+            Task timeoutTask = Task.Delay(timeout);
+            Task result = await Task.WhenAny(waitTask, timeoutTask);
+            if (result == timeoutTask)
             {
                 RemoveWaitingTask(typeof(T), waitTask);
                 return default;
@@ -42,18 +46,23 @@ namespace TgenNetProtocol
         }
 
         /// <returns>The value or default if value wasn't returned within the set timeout</returns>
-        public async Task<object> WaitFor(Type type, int millisecondsTimeout)
+        public Task<object> WaitFor(Type type, int millisecondsTimeout) =>
+            WaitFor(type, TimeSpan.FromMilliseconds(millisecondsTimeout));
+
+        /// <returns>The value or default if value wasn't returned within the set timeout</returns>
+        public async Task<object> WaitFor(Type type, TimeSpan timeout)
         {
             Task<object> waitTask = WaitFor(type);
-            Task timeout = Task.Delay(millisecondsTimeout);
-            Task result = await Task.WhenAny(waitTask, timeout);
-            if (result == timeout)
+            Task timeoutTask = Task.Delay(timeout);
+            Task result = await Task.WhenAny(waitTask, timeoutTask);
+            if (result == timeoutTask)
             {
                 RemoveWaitingTask(type, waitTask);
                 return default;
             }
             return await waitTask;
         }
+
 
         private void RemoveWaitingTask(Type type, Task task)
         {
