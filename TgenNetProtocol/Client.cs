@@ -31,14 +31,10 @@ namespace TgenNetProtocol
 
         public int Available => client.Available;
 
+        public bool Connected => IsActive;
+
         public bool IsActive { get { try { return client.Connected; } catch { return false; } } }
-        /*
-        public Client(TcpClient tcpClient)
-        {
-            this.client = tcpClient.Client;
-            controlledInstance = null;
-        }
-        */
+
         public Client(Socket socket)
         {
             this.client = socket;
@@ -48,7 +44,6 @@ namespace TgenNetProtocol
         public void Connect(string ip, int port)
         {
             client.Connect(ip, port);
-
             client.NoDelay = true;
         }
 
