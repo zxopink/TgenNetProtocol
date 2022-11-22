@@ -14,7 +14,8 @@ namespace TgenNetProtocol
         /// <typeparam name="T">The awaiting type</typeparam>
         /// <param name="sender">The client to set the task for</param>
         /// <returns>A task that waits for the client to send the specified type</returns>
-        public async Task<T> WaitFor<T>(ClientInfo sender) => (T)await WaitFor(typeof(T), sender);
+        public async Task<T> WaitFor<T>(ClientInfo sender) => 
+            (T)await WaitFor(typeof(T), sender);
 
         public Task<object> WaitFor(Type type, ClientInfo sender) =>
             WaitForHandler.WaitFor((type, sender));
@@ -28,7 +29,7 @@ namespace TgenNetProtocol
             WaitForHandler.WaitFor((type, client), millisecondsTimeout);
 
         public async Task<T> WaitFor<T>(ClientInfo client, TimeSpan timeout) =>
-            (T)await WaitFor(typeof(T), client, timeout);
+            (T) await WaitFor(typeof(T), client, timeout);
 
         public Task<object> WaitFor(Type type, ClientInfo client, TimeSpan timeout) =>
             WaitForHandler.WaitFor((type, client), timeout);

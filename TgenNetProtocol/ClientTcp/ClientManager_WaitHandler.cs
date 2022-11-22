@@ -12,7 +12,8 @@ namespace TgenNetProtocol
         private WaitForHandler<Type> WaitForHandler { get; set; } 
             = new WaitForHandler<Type>();
 
-        public async Task<T> WaitFor<T>() => (T)await WaitFor(typeof(T));
+        public async Task<T> WaitFor<T>() => 
+            (T)await WaitFor(typeof(T));
 
         public Task<object> WaitFor(Type type) =>
             WaitForHandler.WaitFor(type);
@@ -27,7 +28,7 @@ namespace TgenNetProtocol
 
         /// <returns>The value or default if value wasn't returned within the set timeout</returns>
         public async Task<T> WaitFor<T>(TimeSpan timeout) =>
-            (T)await WaitForHandler.WaitFor(typeof(T), timeout);
+            (T) await WaitFor(typeof(T), timeout);
 
         /// <returns>The value or default if value wasn't returned within the set timeout</returns>
         public Task<object> WaitFor(Type type, TimeSpan timeout) =>
