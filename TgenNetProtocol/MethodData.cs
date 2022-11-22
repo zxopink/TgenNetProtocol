@@ -4,6 +4,7 @@ using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
 using System.Runtime.CompilerServices;
+using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -92,15 +93,27 @@ namespace TgenNetProtocol
             return new MethodData(this, target);
         }
 
-        /// <summary>Invokes the function</summary>
-        /// <param name="parameters">The functions parameters</param>
-        public void Invoke(dynamic[] parameters)
+        private void InvokeInternal(params dynamic[] parameters)
         {
             if (HasClientData)
                 _method(parameters[0], parameters[1]);
             else
                 _method(parameters[0]);
         }
+
+        /// <summary>Invokes the function</summary>
+        /// <param name="parameters">The functions parameters</param>
+        public void Invoke(object[] parameters) =>
+            InvokeInternal((dynamic[])parameters);
+            /*redundent cast, but keep as it's easier to read*/
+
+        /// <summary>Invokes the function</summary>
+        public void Invoke(object parameter, INetInfo netInfo) =>
+            InvokeInternal(parameter, netInfo);
+
+        /// <summary>Invokes the function</summary>
+        public void Invoke(object parameter) =>
+            InvokeInternal(parameter);
 
         public override bool Equals(object obj)
         {
@@ -118,15 +131,25 @@ namespace TgenNetProtocol
         public static bool operator ==(MethodData a, MethodData b) => a.Equals(b);
         public static bool operator !=(MethodData a, MethodData b) => !a.Equals(b);
 
-        public void Invoke(dynamic netObject) =>
-            _method(netObject);
-        public void Invoke(dynamic netObject, INetInfo netInfo) =>
-            _method(netObject, (dynamic)netInfo);
-
         public static explicit operator MethodData(Delegate method) =>
             new MethodData(method.Method, method.Target ?? throw new NullReferenceException("MethodData's parent cannot be null"));
 
         //objects must be dynamic, the run-time doesn't look at the object type but the variable type
         //Best way is to keep the variable dynamic
+
+        /// <summary>I'm not sure???</summary>
+        public override int GetHashCode()
+        {
+            int hashCode = -365788696;
+            hashCode = hashCode * -1521134295 + EqualityComparer<dynamic>.Default.GetHashCode(_method);
+            hashCode = hashCode * -1521134295 + EqualityComparer<Delegate>.Default.GetHashCode(Method);
+            hashCode = hashCode * -1521134295 + EqualityComparer<Type>.Default.GetHashCode(_methodType);
+            hashCode = hashCode * -1521134295 + EqualityComparer<Type>.Default.GetHashCode(MethodType);
+            hashCode = hashCode * -1521134295 + EqualityComparer<Type>.Default.GetHashCode(_parameterType);
+            hashCode = hashCode * -1521134295 + EqualityComparer<Type>.Default.GetHashCode(ParameterType);
+            hashCode = hashCode * -1521134295 + _hasClientData.GetHashCode();
+            hashCode = hashCode * -1521134295 + HasClientData.GetHashCode();
+            return hashCode;
+        }
     }
 }

@@ -45,7 +45,7 @@ namespace TgenNetProtocol
             {
                 UdpInfo info = peer != null ? new UdpInfo(peer) : new UdpInfo(endPoint);
                 var obj = Formatter.FromBytes(data);
-                TypeSetter.SendNewDatagramMessage(obj, info, this);
+                TypeSetter.SendNewNetMessage(obj, this, info);
             }
             catch (SerializationException e)
             {

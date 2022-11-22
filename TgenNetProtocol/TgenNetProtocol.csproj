@@ -8,12 +8,20 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Remove="NetworkBaseClasses\MonoNetwork.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="LiteNetLib" Version="0.9.5.2" />
     <PackageReference Include="Microsoft.CSharp" Version="4.7.0" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\..\TgenSerializer\TgenSerializer\TgenSerializer.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="ClientTcp\" />
   </ItemGroup>
 
 </Project>

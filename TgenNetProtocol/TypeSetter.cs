@@ -1,140 +1,84 @@
-﻿using System;
+﻿using LiteNetLib;
+using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Dynamic;
 using System.Linq;
 
 namespace TgenNetProtocol
 {
-    public class TypeSetter
+    /// <summary>Singleton type used by network manager objects</summary>
+    public static class TypeSetter
     {
-        public static List<INetworkObject> networkObjects = new List<INetworkObject>(); //list of active networkObjects
-
-        /// <summary>
-        /// this bool lets other threads know if a message is being send
-        /// the sending process takes time and cannot get changed at run-time (things might break)
-        /// </summary>
-        public volatile static bool isWorking = false;
+        private static List<INetworkObject> NetworkObjects { get; set; } 
+            = new List<INetworkObject>(); //list of active networkObjects
 
         public static void Add(INetworkObject obj)
         {
-            networkObjects.Add(obj);
+            lock (NetworkObjects)
+                NetworkObjects.Add(obj);
         }
 
         public static void Remove(INetworkObject obj)
         {
-            int index = networkObjects.IndexOf(obj);
-            if (index != -1) //Found
-                networkObjects[index] = null;
+            lock (NetworkObjects)
+                NetworkObjects.Remove(obj);
         }
 
-        #region Server Get Message
+        internal static void SendNewNetMessage(object message, INetManager caller) =>
+            SendNewNetMessage(message, caller, clientInfo: null);
+
+
         /// <summary>
-        /// Called when a packet is received from a client
-        /// this method invokes server network methods on all active network objects
+        /// Called when a new packet is received.
+        /// This method invokes network methods on all active network objects under the given INetManager
         /// </summary>
-        /// <param name="message">The sent object (Payload)</param>
-        /// <param name="clientInfo">The client who sent the info</param>
-        internal static void SendNewServerMessage(object message, ClientInfo clientInfo, INetManager caller)
+        /// <param name="message"></param>
+        /// <param name="caller"></param>
+        /// <param name="clientInfo"></param>
+        internal static void SendNewNetMessage(object message, INetManager caller, INetInfo clientInfo)
         {
-            isWorking = true;
-            for (int i = 0; i < networkObjects.Count; i++)
-            {
-                INetworkObject networkObject = networkObjects[i];
-                if (networkObject == default 
-                    || (networkObject.NetManagers.Length != 0 && !networkObject.NetManagers.Contains(caller)))
-                    continue;
-
-                // get method by name,  or loop through all methods
-                // looking for an attribute
-                var methodsInfo = networkObject.ServerMethods;
-                NetworkObjHandler(clientInfo, methodsInfo, message, networkObject);
-            }
-            CleanNullObjects();
-            isWorking = false;
-        }
-        #endregion
-
-        #region Client Get Message
-        /// <summary>
-        /// Called when a packet is received from the server
-        /// this method invokes client network methods on all active network objects
-        /// </summary>
-        /// <param name="message">The sent object (Payload)</param>
-        internal static void SendNewClientMessage(object message, INetManager caller)
-        {
-            isWorking = true;
-            for (int i = 0; i < networkObjects.Count; i++)
-            {
-                INetworkObject networkObject = networkObjects[i];
-                if (networkObject == default
-                    || (networkObject.NetManagers.Length != 0 && !networkObject.NetManagers.Contains(caller)))
-                    continue;
-
-                // get method by name,  or loop through all methods
-                // looking for an attribute
-                var methodsInfo = networkObject.ClientMethods;
-                NetworkObjHandler(methodsInfo, message, networkObject);
-            }
-            CleanNullObjects();
-            isWorking = false;
-        }
-        #endregion
-
-        #region Datagram Get Message
-        /// <summary>
-        /// Called when a packet is received from a client
-        /// this method invokes server network methods on all active network objects
-        /// </summary>
-        /// <param name="message">The sent object (Payload)</param>
-        /// <param name="packetData">The client who sent the info</param>
-        internal static void SendNewDatagramMessage(object message, UdpInfo packetData, INetManager caller)
-        {
-            isWorking = true;
-            for (int i = 0; i < networkObjects.Count; i++)
-            {
-                INetworkObject networkObject = networkObjects[i];
-                if (networkObject == default
-                    || (networkObject.NetManagers.Length != 0 && !networkObject.NetManagers.Contains(caller)))
-                    continue;
-
-                // get method by name,  or loop through all methods
-                // looking for an attribute
-                var methodsInfo = networkObject.DgramMethods;
-                NetworkObjHandler(packetData, methodsInfo, message, networkObject);
-            }
-            CleanNullObjects();
-            isWorking = false;
-        }
-        #endregion
-
-        private static void NetworkObjHandler(INetInfo netInfo, List<MethodData> methodsInfo, object message, INetworkObject networkObject)
-        {
-            foreach (var method in methodsInfo)
-            {
-                if (method.ParameterType.IsAssignableFrom(message.GetType()))
+            lock (NetworkObjects)
+                for (int i = 0; i < NetworkObjects.Count; i++)
                 {
-                    if (method.HasClientData)
-                        networkObject.InvokeNetworkMethods(method, new object[] { message, netInfo });
-                    else
-                        networkObject.InvokeNetworkMethods(method, new object[] { message });
+                    INetworkObject networkObject = NetworkObjects[i];
+                    if (networkObject == default
+                        || (networkObject.NetManagers.Length != 0 && !networkObject.NetManagers.Contains(caller)))
+                        continue;
+
+                    object[] parameters = (clientInfo == null) ?
+                        new[] { message } : new[] { message, clientInfo };
+                    // get method by name,  or loop through all methods
+                    // looking for an attribute
+                    List<MethodData> methodsInfo = GetNetMethods(networkObject, caller);
+                    NetworkObjHandler(methodsInfo, parameters, networkObject);
                 }
-            }
-        }
-        private static void NetworkObjHandler(List<MethodData> methodsInfo, object message, INetworkObject networkObject)
-        {
-            foreach (var method in methodsInfo)
-                if (method.ParameterType.IsAssignableFrom(message.GetType()))
-                    networkObject.InvokeNetworkMethods(method, new object[] { message });
         }
 
-        private static void NetworkObjHandler(List<MethodData> methodsInfo, object message)
+        private static List<MethodData> GetNetMethods(INetworkObject netObject, INetManager caller)
         {
-            foreach (var method in methodsInfo)
-                if (method.ParameterType.IsAssignableFrom(message.GetType()))
-                    method.Invoke(message);
+            if (caller is ClientManager)
+                return netObject.ClientMethods;
+            else if (caller is ServerManager)
+                return netObject.ServerMethods;
+            else if (caller is UdpManager)
+                return netObject.DgramMethods;
+            else
+                throw new ArgumentException($"{nameof(caller)} is not a valid NetManager type: {caller.GetType()}");
         }
 
-        private static void CleanNullObjects() =>
-            networkObjects.RemoveAll(item => item == null);
+        private static void NetworkObjHandler(List<MethodData> methodsInfo, object[] parameters, INetworkObject networkObject)
+        {
+            foreach (var method in methodsInfo)
+                if (method.ParameterType.IsAssignableFrom(parameters[0].GetType()))
+                    networkObject.InvokeNetworkMethods(method, parameters);
+        }
+
+        //private static void NetworkObjHandler(List<MethodData> methodsInfo, object message)
+        //{
+        //    foreach (var method in methodsInfo)
+        //        if (method.ParameterType.IsAssignableFrom(message.GetType()))
+        //            method.Invoke(message);
+        //}
     }
 }

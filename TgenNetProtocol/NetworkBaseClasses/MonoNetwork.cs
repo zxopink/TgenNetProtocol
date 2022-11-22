@@ -159,10 +159,11 @@ namespace TgenNetProtocol
 
         private void RemoveFromAttributes()
         {
+            TypeSetter.Remove(this);
             bool isDone = false;
             while (!isDone)
             {
-                if (!TypeSetter.isWorking)
+                if (!isWorking)
                 {
                     //TypeSetter.networkObjects.Remove(this);
                     isDone = true;

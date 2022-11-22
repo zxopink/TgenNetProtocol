@@ -60,6 +60,5 @@ namespace TestTgenProtocol.TcpTests
             Assert.True(ClientSide.StringVal == str);
             Assert.That(m, Is.EqualTo(ClientSide.ManagedVal));
         }
-
     }
 }
