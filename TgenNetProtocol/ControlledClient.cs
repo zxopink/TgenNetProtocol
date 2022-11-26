@@ -46,7 +46,7 @@ namespace TgenNetProtocol
             if (!client) throw new SocketException();
 
             NetworkStream stream = client;
-            byte[] packet = obj.Array;
+            byte[] packet = obj.Buffer;
             stream.Write(packet, 0, packet.Length);
         }
         public void Send(byte[] packet)
