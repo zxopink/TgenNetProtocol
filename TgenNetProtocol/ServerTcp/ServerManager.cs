@@ -22,14 +22,13 @@ namespace TgenNetProtocol
         /// <param name="accept">Whether to accept the connection or not, accept is true if data and server password match</param>
         public delegate void RequestPending(ClientInfo info, byte[] data, ref bool accept);
         public event RequestPending ClientPendingEvent;
-        public event NetworkActivity ClientDeclineEvent;
+        public event NetworkActivity ClientDeclinedEvent;
         private List<ClientInfo> clients = new List<ClientInfo>();
         private Socket listener;
         private readonly bool dualMode; //NEW VAR
 
         private readonly IPEndPoint localEP; //local EndPoint
-        private IFormatter formatter;
-        public IFormatter Formatter { get => formatter; set => formatter = value; }
+        public IFormatter Formatter { get; set; }
         //private bool listen = false; //made to control the listening thread
 
         /// <summary>
@@ -41,7 +40,7 @@ namespace TgenNetProtocol
             dualMode = true;
 
             active = false;
-            formatter = new TgenSerializer.Formatter(CompressionFormat.Binary);
+            Formatter = new TgenSerializer.Formatter(CompressionFormat.Binary);
         }
         /// <summary>
         /// Uses 'TgenSerializer' as a default Formatter
@@ -52,7 +51,7 @@ namespace TgenNetProtocol
             dualMode = false;
 
             active = false;
-            formatter = new TgenSerializer.Formatter(CompressionFormat.Binary);
+            Formatter = new TgenSerializer.Formatter(CompressionFormat.Binary);
         }
         /// <summary>
         /// Uses 'TgenSerializer' as a default Formatter
@@ -63,7 +62,7 @@ namespace TgenNetProtocol
             dualMode = false;
 
             active = false;
-            formatter = new TgenSerializer.Formatter(CompressionFormat.Binary);
+            Formatter = new TgenSerializer.Formatter(CompressionFormat.Binary);
         }
 
         public ServerManager(int port, IFormatter formatter)
@@ -72,7 +71,7 @@ namespace TgenNetProtocol
             dualMode = true;
 
             active = false;
-            this.formatter = formatter;
+            this.Formatter = formatter;
         }
         public ServerManager(IPAddress localaddr, int port, IFormatter formatter)
         {
@@ -80,7 +79,7 @@ namespace TgenNetProtocol
             dualMode = false;
 
             active = false;
-            this.formatter = formatter;
+            this.Formatter = formatter;
         }
         public ServerManager(IPEndPoint localEP, IFormatter formatter)
         {
@@ -88,30 +87,21 @@ namespace TgenNetProtocol
             dualMode = false;
 
             active = false;
-            this.formatter = formatter;
+            this.Formatter = formatter;
         }
 
         private bool active; // field
-        public bool Active   // property
-        {
-            get { return active; }
-        }
-        public int AmountOfClients   // property
-        {
-            get { return clients.Count; }
-        }
+        public bool Active => active;   // property
+        public int AmountOfClients => clients.Count; // property
 
         public string PublicIp
         {
             get { try { return new WebClient().DownloadString("http://icanhazip.com"); } catch(Exception) { return "Unable to load public IP"; } }
         }
 
-        public int Port
-        { get { return localEP.Port; } }
-        public IPAddress Address
-        { get { return localEP.Address; } }
-        public AddressFamily AddressFamily
-        { get { return localEP.AddressFamily; } }
+        public int Port => localEP.Port;
+        public IPAddress Address => localEP.Address;
+        public AddressFamily AddressFamily => localEP.AddressFamily;
 
         public const int PASSKEY_TIMEOUT = 5000;
         private byte[] passKey;
@@ -177,7 +167,7 @@ namespace TgenNetProtocol
             bool approved = check.Result;
             if(!approved)
             {
-                ClientDeclineEvent?.Invoke(info);
+                ClientDeclinedEvent?.Invoke(info);
                 info.Client.Socket.Send(new byte[] { 0 /*FAILED*/});
                 info.Client.Close();
                 return;

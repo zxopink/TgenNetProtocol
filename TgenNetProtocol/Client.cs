@@ -47,14 +47,6 @@ namespace TgenNetProtocol
             client.NoDelay = true;
         }
 
-        public Task ConnectAsync(string ip, int port)
-        {
-            return Task.Run(() => {
-                client.Connect(ip, port);
-                client.NoDelay = true; //disables delay which occures when sending small chunks or data
-            });
-        }
-
         public void Close()
         {
             client.Close();

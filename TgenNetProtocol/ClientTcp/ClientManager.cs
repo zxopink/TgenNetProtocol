@@ -14,7 +14,7 @@ namespace TgenNetProtocol
         private CancellationTokenSource cancellationToken;
 
         private Client client;
-        public Client Client { get => client; }
+        public Client Client => client;
 
         //public event EventHandler OnConnect;
         public delegate void ClientActivity();
@@ -30,10 +30,7 @@ namespace TgenNetProtocol
         /// <summary>
         /// Checks if the listener for messages is active
         /// </summary>
-        public bool Active   // property
-        {
-            get { return client; }
-        }
+        public bool Active => client; // property
 
         public string PublicIp
         {
@@ -79,7 +76,7 @@ namespace TgenNetProtocol
             this.formatter = formatter;
         }
 
-        public bool Connected { get => client; }
+        public bool Connected => Client.Connected;
 
         /// <summary>
         /// Connects the client to the server based on the given Ip and Port

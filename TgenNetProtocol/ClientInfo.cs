@@ -5,7 +5,7 @@ using System.Net.Sockets;
 namespace TgenNetProtocol
 {
     /// <summary>
-    /// A struct made to keep track of clients for the serverManager
+    /// A class made to keep track of clients for the serverManager
     /// </summary>
     public class ClientInfo : INetInfo
     {
@@ -39,15 +39,7 @@ namespace TgenNetProtocol
 
         public override string ToString() => Id.ToString();
 
-        public override int GetHashCode()
-        {
-            int hashCode = 1269177722;
-            hashCode = hashCode * -1521134295 + EqualityComparer<IPEndPoint>.Default.GetHashCode(EndPoint);
-            hashCode = hashCode * -1521134295 + Connected.GetHashCode();
-            hashCode = hashCode * -1521134295 + EqualityComparer<Client>.Default.GetHashCode(Client);
-            hashCode = hashCode * -1521134295 + Id.GetHashCode();
-            return hashCode;
-        }
+        public override int GetHashCode() => base.GetHashCode();
 
         public static bool operator ==(ClientInfo a, ClientInfo b)
         => a.Equals(b);
