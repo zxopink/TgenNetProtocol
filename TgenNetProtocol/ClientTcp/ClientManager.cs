@@ -68,7 +68,7 @@ namespace TgenNetProtocol
         public ClientManager()
         {
             client = new Client(GetNewSocket()); //make an empty one that will be replaced for later
-            formatter = new TgenSerializer.Formatter(CompressionFormat.Binary);
+            formatter = new TgenSerializer.Formatter();
         }
         public ClientManager(IFormatter formatter)
         {
