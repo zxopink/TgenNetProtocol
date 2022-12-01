@@ -9,10 +9,15 @@ using System.Threading.Tasks;
 
 namespace TgenNetProtocol
 {
-    public struct UdpInfo : INetInfo
+    public struct UdpInfo : IPeerInfo
     {
         public IPEndPoint EndPoint { get; private set; }
         public NetPeer Peer { get; set; }
+
+        public NetworkStream NetworkStream => throw new NotSupportedException($"A udp peer, doesn't have {nameof(NetworkStream)}");
+
+        public Socket Socket => throw new NotSupportedException($"A udp peer, doesn't have {nameof(Socket)}");
+
         public UdpInfo(IPEndPoint endPoint)
         {
             EndPoint = endPoint;
@@ -26,7 +31,7 @@ namespace TgenNetProtocol
         public override bool Equals(object obj) =>
             obj is UdpInfo ? Equals((UdpInfo)obj) : false ;
 
-        public bool Equals(INetInfo clientData)
+        public bool Equals(IPeerInfo clientData)
         {
             UdpInfo data = (UdpInfo)clientData;
             return EndPoint.Equals(data.EndPoint);

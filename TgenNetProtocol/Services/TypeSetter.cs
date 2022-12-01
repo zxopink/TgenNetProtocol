@@ -36,7 +36,7 @@ namespace TgenNetProtocol
         /// <param name="message"></param>
         /// <param name="caller"></param>
         /// <param name="clientInfo"></param>
-        internal static void SendNewNetMessage(object message, INetManager caller, INetInfo clientInfo)
+        internal static void SendNewNetMessage(object message, INetManager caller, IPeerInfo clientInfo)
         {
             lock (NetworkObjects)
                 for (int i = 0; i < NetworkObjects.Count; i++)

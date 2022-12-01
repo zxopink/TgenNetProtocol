@@ -16,6 +16,7 @@ namespace TgenNetProtocol
 
         public delegate void NetworkActivity(ClientInfo client);
         public event NetworkActivity ClientDisconnectedEvent;
+        public event Action<ClientInfo, Exception> ClientAbortEvent;
         public event NetworkActivity ClientConnectedEvent;
 
         /// <param name="data">Client data when connecting</param>
@@ -29,6 +30,7 @@ namespace TgenNetProtocol
 
         private readonly IPEndPoint localEP; //local EndPoint
         public IFormatter Formatter { get; set; }
+        public IClientsFactory ClientsFactory { get; set; } = new StandardClientFactroy
         //private bool listen = false; //made to control the listening thread
 
         /// <summary>
@@ -234,7 +236,7 @@ namespace TgenNetProtocol
             }
             catch (Exception e)
             {
-                DropClient(client);
+                AbortClient(client, e);
             }
         }
 
@@ -251,21 +253,21 @@ namespace TgenNetProtocol
             for (int i = 0; i < AmountOfClients; i++) //AmountOfClients = length of clients list
             {
                 ClientInfo client = clients[i];
-                if (client) HandleClientPacket(client);
-                else { DropClient(client); }
+                HandleClientPacket(client);
             }
         }
 
         /// <summary>
-        /// Is called to disconnect a client from the server (Close communications)
+        /// Stop and drop communications with a client
         /// </summary>
         /// <param name="client">The id of the client</param>
-        private void AbortClient(ClientInfo client)
+        public void KickClient(ClientInfo client)
         {
             Socket socket = client;
-            clients.Remove(client);
+            bool removed = clients.Remove(client);
             socket.Close();
-            ClientDisconnectedEvent?.Invoke(client);
+            if(removed)
+                ClientDisconnectedEvent?.Invoke(client);
         }
 
         /// <summary>
@@ -273,21 +275,10 @@ namespace TgenNetProtocol
         /// (Clients that disconnected/had a socket error)
         /// </summary>
         /// <param name="client"></param>
-        private void DropClient(ClientInfo client)
+        private void AbortClient(ClientInfo client, Exception error)
         {
-            AbortClient(client);
-        }
-
-        /// <summary>
-        /// Stop and drop communications with a client
-        /// </summary>
-        /// <param name="client"></param>
-        public void KickClient(ClientInfo client)
-        {
-            if (client)
-            {
-                AbortClient(client);
-            }
+            ClientAbortEvent?.Invoke(client, error);
+            KickClient(client);
         }
 
         /// <summary>
@@ -412,7 +403,7 @@ namespace TgenNetProtocol
                     for (int i = 0; i < AmountOfClients; i++)
                     {
                         ClientInfo client = clients[i];
-                        DropClient(client);
+                        KickClient(client);
                     }
                     cancellationToken?.Cancel();
                     cancellationToken?.Dispose();

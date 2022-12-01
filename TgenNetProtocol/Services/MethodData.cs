@@ -69,8 +69,8 @@ namespace TgenNetProtocol
             if (parameters.Length > 2)
                 return new ArgumentException($"'{name}' has more than 2 parameters");
 
-            if (parameters.Length > 1 && !typeof(INetInfo).IsAssignableFrom(parameters[1].ParameterType))
-                return new ArgumentException($"'{name}' second parameter is not of type {typeof(INetInfo)}");
+            if (parameters.Length > 1 && !typeof(IPeerInfo).IsAssignableFrom(parameters[1].ParameterType))
+                return new ArgumentException($"'{name}' second parameter is not of type {typeof(IPeerInfo)}");
 
             return null;
         }
@@ -108,7 +108,7 @@ namespace TgenNetProtocol
             /*redundent cast, but keep as it's easier to read*/
 
         /// <summary>Invokes the function</summary>
-        public void Invoke(object parameter, INetInfo netInfo) =>
+        public void Invoke(object parameter, IPeerInfo netInfo) =>
             InvokeInternal(parameter, netInfo);
 
         /// <summary>Invokes the function</summary>

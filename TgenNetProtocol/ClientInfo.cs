@@ -7,12 +7,16 @@ namespace TgenNetProtocol
     /// <summary>
     /// A class made to keep track of clients for the serverManager
     /// </summary>
-    public class ClientInfo : INetInfo
+    public class ClientInfo : IPeerInfo
     {
+        
         public IPEndPoint EndPoint { get => (IPEndPoint)Client.RemoteEndPoint; }
         public bool Connected { get => Client.IsActive; }
         public Client Client { get; private set; }
         public int Id { get; private set; }
+
+        public NetworkStream NetworkStream => Client.NetworkStream;
+        public Socket Socket => Client.Socket;
 
         public ClientInfo(Client client, int id)
         {
@@ -29,7 +33,7 @@ namespace TgenNetProtocol
         {
             return other is ClientInfo otherInfo ? otherInfo.Id == Id : false;
         }
-        public bool Equals(INetInfo clientData) =>
+        public bool Equals(IPeerInfo clientData) =>
             Equals((object)clientData);
 
         public static implicit operator int(ClientInfo clientData) => clientData.Id;

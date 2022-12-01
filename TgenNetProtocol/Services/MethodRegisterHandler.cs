@@ -44,7 +44,7 @@ namespace TgenNetProtocol
         internal void CallRegisters(object message) =>
             CallRegisters(message, null);
 
-        internal void CallRegisters(object message, INetInfo client)
+        internal void CallRegisters(object message, IPeerInfo client)
         {
             Type t = message.GetType();
             if (RegisteredMethods.TryGetValue(t, out var list))
