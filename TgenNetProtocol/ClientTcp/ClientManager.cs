@@ -145,7 +145,6 @@ namespace TgenNetProtocol
         public void Close()
         {
             cancellationToken?.Cancel();
-            cancellationToken?.Dispose();
             client.Close();
             client = new Client(GetNewSocket());
         }
@@ -230,6 +229,7 @@ namespace TgenNetProtocol
         public void Dispose()
         {
             Close();
+            cancellationToken?.Dispose();
         }
     }
 }

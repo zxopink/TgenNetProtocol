@@ -9,35 +9,37 @@ using System.Runtime.Serialization;
 
 namespace TgenNetProtocol
 {
-    public partial class ServerManager : IDisposable, INetManager
+    public partial class ServerManager<ClientsType> : IDisposable, INetManager, IServerManager
+        where ClientsType : IPeerInfo
     {
         private Task pollEventsTask;
         private CancellationTokenSource cancellationToken;
 
-        public delegate void NetworkActivity(ClientInfo client);
+        public delegate void NetworkActivity(ClientsType client);
         public event NetworkActivity ClientDisconnectedEvent;
-        public event Action<ClientInfo, Exception> ClientAbortEvent;
+        public event Action<ClientsType, Exception> ClientAbortEvent;
         public event NetworkActivity ClientConnectedEvent;
 
         /// <param name="data">Client data when connecting</param>
         /// <param name="accept">Whether to accept the connection or not, accept is true if data and server password match</param>
-        public delegate void RequestPending(ClientInfo info, byte[] data, ref bool accept);
+        public delegate void RequestPending(Socket info, byte[] data, ref bool accept);
         public event RequestPending ClientPendingEvent;
-        public event NetworkActivity ClientDeclinedEvent;
-        private List<ClientInfo> clients = new List<ClientInfo>();
+        public event Action<Socket> ClientDeclinedEvent;
+        private List<ClientsType> clients = new List<ClientsType>();
         private Socket listener;
         private readonly bool dualMode; //NEW VAR
 
         private readonly IPEndPoint localEP; //local EndPoint
         public IFormatter Formatter { get; set; }
-        public IClientsFactory ClientsFactory { get; set; } = new StandardClientFactroy
+        public IClientsFactory<ClientsType> ClientsFactory { get; set; }
         //private bool listen = false; //made to control the listening thread
 
         /// <summary>
         /// Uses 'TgenSerializer' as a default Formatter
         /// </summary>
-        public ServerManager(int port)
+        public ServerManager(int port, IClientsFactory<ClientsType> clientsFactory)
         {
+            ClientsFactory = clientsFactory;
             localEP = new IPEndPoint(IPAddress.IPv6Any, port);
             dualMode = true;
 
@@ -47,8 +49,9 @@ namespace TgenNetProtocol
         /// <summary>
         /// Uses 'TgenSerializer' as a default Formatter
         /// </summary>
-        public ServerManager(IPAddress localaddr, int port)
+        public ServerManager(IPAddress localaddr, int port, IClientsFactory<ClientsType> clientsFactory)
         {
+            ClientsFactory = clientsFactory;
             localEP = new IPEndPoint(localaddr, port);
             dualMode = false;
 
@@ -58,8 +61,9 @@ namespace TgenNetProtocol
         /// <summary>
         /// Uses 'TgenSerializer' as a default Formatter
         /// </summary>
-        public ServerManager(IPEndPoint localEP)
+        public ServerManager(IPEndPoint localEP, IClientsFactory<ClientsType> clientsFactory)
         {
+            ClientsFactory = clientsFactory;
             this.localEP = localEP;
             dualMode = false;
 
@@ -67,24 +71,27 @@ namespace TgenNetProtocol
             Formatter = new TgenSerializer.Formatter();
         }
 
-        public ServerManager(int port, IFormatter formatter)
+        public ServerManager(int port, IFormatter formatter, IClientsFactory<ClientsType> clientsFactory)
         {
+            ClientsFactory = clientsFactory;
             localEP = new IPEndPoint(IPAddress.IPv6Any, port);
             dualMode = true;
 
             active = false;
             this.Formatter = formatter;
         }
-        public ServerManager(IPAddress localaddr, int port, IFormatter formatter)
+        public ServerManager(IPAddress localaddr, int port, IFormatter formatter, IClientsFactory<ClientsType> clientsFactory)
         {
+            ClientsFactory = clientsFactory;
             localEP = new IPEndPoint(localaddr, port);
             dualMode = false;
 
             active = false;
             this.Formatter = formatter;
         }
-        public ServerManager(IPEndPoint localEP, IFormatter formatter)
+        public ServerManager(IPEndPoint localEP, IFormatter formatter, IClientsFactory<ClientsType> clientsFactory)
         {
+            ClientsFactory = clientsFactory;
             this.localEP = localEP;
             dualMode = false;
 
@@ -93,6 +100,8 @@ namespace TgenNetProtocol
         }
 
         private bool active; // field
+
+        /// <summary>Returns if the listener is active, not related to states with clients</summary>
         public bool Active => active;   // property
         public int AmountOfClients => clients.Count; // property
 
@@ -142,54 +151,30 @@ namespace TgenNetProtocol
             return socket;
         }
 
-        private int clientsCount = 0; //an Id counter
-        private ClientInfo AcceptIncomingClient()
+        private async void AcceptIncomingClient()
         {
-            Socket newClientListener = listener.Accept();
+            Socket socket = listener.Accept();
+            socket.NoDelay = true; //disables delay which occures when sending small chunks of data
+            bool approved = await CheckPass(socket);
 
-            newClientListener.NoDelay = true; //disables delay which occures when sending small chunks of data
-
-            ClientInfo client = new ClientInfo(newClientListener, clientsCount);
-
-            Task<bool> passCheck = CheckPass(client);
-            checkPassList.Add((passCheck, client));
-
-            return client;
-        }
-
-        private void AddApprovedClients((Task<bool> passCheck, ClientInfo clientInfo) data)
-        {
-            Task<bool> check = data.passCheck;
-            if (!check.IsCompleted)
-                return;
-
-            checkPassList.Remove(data);
-
-            ClientInfo info = data.clientInfo;
-            bool approved = check.Result;
-            if(!approved)
+            if (!approved)
             {
-                ClientDeclinedEvent?.Invoke(info);
-                info.Client.Socket.Send(new byte[] { 0 /*FAILED*/});
-                info.Client.Close();
+                ClientDeclinedEvent?.Invoke(socket);
+                socket.Send(new byte[] { 0 /*FAILED*/});
+                socket.Close();
                 return;
             }
+            socket.Send(new byte[] { 200 /*200 OK*/});
 
-            info.Client.Socket.Send(new byte[] { 200 /*200 OK*/});
-
-            clientsCount++;
-            clients.Add(data.clientInfo);
-
-            ClientConnectedEvent?.Invoke(data.clientInfo);
+            ClientsType client = ClientsFactory.PeerConnection(socket);
+            clients.Add(client);
+            ClientConnectedEvent?.Invoke(client);
         }
 
-        List<(Task<bool> passCheck, ClientInfo client)> checkPassList = new List<(Task<bool>, ClientInfo)>();
-        public async Task<bool> CheckPass(ClientInfo info)
+        public async Task<bool> CheckPass(Socket s)
         {
             if (passKey == null)
                 return true;
-
-            Socket s = info.Client.Socket;
 
             bool result = false;
             ArraySegment<byte> seg = new ArraySegment<byte>(new byte[passKey.Length]);
@@ -211,14 +196,13 @@ namespace TgenNetProtocol
                 result = false;
             }
 
-            ClientPendingEvent?.Invoke(info, seg.Array, ref result); //`result` can be changed by event
+            ClientPendingEvent?.Invoke(s, seg.Array, ref result); //`result` can be changed by event
             return result;
         }
 
-        private void HandleClientPacket(ClientInfo client)
+        private void HandleClientPacket(ClientsType client)
         {
-            if (client.Client.IsControlled) return;
-            NetworkStream stm = client;
+            NetworkStream stm = client.NetworkStream;
             try
             {
                 if (!stm.DataAvailable) return;
@@ -242,17 +226,12 @@ namespace TgenNetProtocol
 
         public void PollEvents()
         {
-            while (listener.Poll(0, SelectMode.SelectRead))//Equivelent to listener.Pending() (TcpListener.Pending())
+            while (listener.Poll(0, SelectMode.SelectRead))//Equivelent to `TcpListener.Pending()`
                 AcceptIncomingClient(); //Method also adds the client to the clients list
 
-            for (int i = checkPassList.Count - 1; i >= 0; i--)
-                AddApprovedClients(checkPassList[i]);
-
-            //Amount of clients can change during tick
-            //int currentClients = AmountOfClients; //this value holds the connected clients during the tick
-            for (int i = 0; i < AmountOfClients; i++) //AmountOfClients = length of clients list
+            for (int i = 0; i < AmountOfClients; i++)
             {
-                ClientInfo client = clients[i];
+                ClientsType client = clients[i];
                 HandleClientPacket(client);
             }
         }
@@ -261,9 +240,9 @@ namespace TgenNetProtocol
         /// Stop and drop communications with a client
         /// </summary>
         /// <param name="client">The id of the client</param>
-        public void KickClient(ClientInfo client)
+        public void KickClient(ClientsType client)
         {
-            Socket socket = client;
+            Socket socket = client.Socket;
             bool removed = clients.Remove(client);
             socket.Close();
             if(removed)
@@ -275,7 +254,7 @@ namespace TgenNetProtocol
         /// (Clients that disconnected/had a socket error)
         /// </summary>
         /// <param name="client"></param>
-        private void AbortClient(ClientInfo client, Exception error)
+        private void AbortClient(ClientsType client, Exception error)
         {
             ClientAbortEvent?.Invoke(client, error);
             KickClient(client);
@@ -287,18 +266,18 @@ namespace TgenNetProtocol
         /// <param name="Message">The message you want to send</param>
         /// <param name="client">The id of the client who's supposed to get the message</param>
         /// <param name="throwOnError">Throw exception on failed send</param>
-        public void Send(object Message, ClientInfo client, bool throwOnError = false)
+        public void Send(object Message, ClientsType client, bool throwOnError = false)
         {
             try
             {
-                NetworkStream stm = client;
+                NetworkStream stm = client.NetworkStream;
                 Formatter.Serialize(stm, Message);
             }
             catch (SerializationException) { throw; } //Message cannot be serialized
             catch (Exception e) { if (throwOnError) throw; /*client left as the message was serialized*/ }
         }
 
-        public void Send(object Message, IEnumerable<ClientInfo> clients, bool throwOnError = false)
+        public void Send(object Message, IEnumerable<ClientsType> clients, bool throwOnError = false)
         {
             foreach (var client in clients)
                 Send(Message, client, throwOnError);
@@ -315,7 +294,7 @@ namespace TgenNetProtocol
             {
                 for (int i = 0; i < AmountOfClients; i++)
                 {
-                    ClientInfo client = clients[i];
+                    ClientsType client = clients[i];
                     Send(Message, client, throwOnError);
                 }
             }
@@ -328,12 +307,12 @@ namespace TgenNetProtocol
         /// <param name="Message">The message</param>
         /// <param name="client">The client that won't get the message</param>
         /// /// <param name="throwOnError">Throw exception on failed send</param>
-        public void SendToAllExcept(object Message, ClientInfo client, bool throwOnError = false)
+        public void SendToAllExcept(object Message, ClientsType client, bool throwOnError = false)
         {
             for (int i = 0; i < AmountOfClients; i++)
             {
-                ClientInfo currentClient = clients[i];
-                if (currentClient.Id != client.Id)
+                ClientsType currentClient = clients[i];
+                if (!currentClient.Equals(client))
                     Send(Message, currentClient, throwOnError);
             }
         }
@@ -402,7 +381,7 @@ namespace TgenNetProtocol
                     Stop();
                     for (int i = 0; i < AmountOfClients; i++)
                     {
-                        ClientInfo client = clients[i];
+                        ClientsType client = clients[i];
                         KickClient(client);
                     }
                     cancellationToken?.Cancel();
@@ -423,4 +402,5 @@ namespace TgenNetProtocol
             Close();
         }
     }
+    internal interface IServerManager { } //Used for TypeSetter to identify the ServerManager because it's generic
 }

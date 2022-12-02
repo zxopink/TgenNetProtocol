@@ -3,13 +3,18 @@ using System.Collections.Generic;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
+using System.Threading.Tasks;
 
 namespace TgenNetProtocol
 {
-    public interface IClientsFactory
+    public interface IClientsFactory<PeerType> 
+        where PeerType : IPeerInfo
     {
+
         /// <summary>Called on newly accepted connection (After password check)</summary>
+        /// <param name="sock">The new socket</param>
+        /// <param name="netManager">Manger that accepted the incoming socket</param>
         /// <returns>A new PeerInfo</returns>
-        IPeerInfo PeerConnection(IPEndPoint endPoint, Socket sock);
+        PeerType PeerConnection(Socket sock);
     }
 }
