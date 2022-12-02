@@ -151,46 +151,26 @@ namespace TgenNetProtocol
             return socket;
         }
 
-        private int clientsCount = 0; //an Id counter
-        private Socket AcceptIncomingClient()
+        private async void AcceptIncomingClient()
         {
-            Socket clientSocket = listener.Accept();
+            Socket socket = listener.Accept();
+            socket.NoDelay = true; //disables delay which occures when sending small chunks of data
+            bool approved = await CheckPass(socket);
 
-            clientSocket.NoDelay = true; //disables delay which occures when sending small chunks of data
-
-            Task<bool> passCheck = CheckPass(clientSocket);
-            checkPassList.Add((passCheck, clientSocket));
-
-            return clientSocket;
-        }
-
-        private void AddApprovedClients((Task<bool> passCheck, Socket socket) data)
-        {
-            Task<bool> check = data.passCheck;
-            if (!check.IsCompleted)
-                return;
-
-            checkPassList.Remove(data);
-
-            Socket socket = data.socket;
-            bool approved = check.Result;
-            if(!approved)
+            if (!approved)
             {
                 ClientDeclinedEvent?.Invoke(socket);
                 socket.Send(new byte[] { 0 /*FAILED*/});
                 socket.Close();
                 return;
             }
-
             socket.Send(new byte[] { 200 /*200 OK*/});
-
 
             ClientsType client = ClientsFactory.PeerConnection(socket);
             clients.Add(client);
             ClientConnectedEvent?.Invoke(client);
         }
 
-        List<(Task<bool> passCheck, Socket client)> checkPassList = new List<(Task<bool>, Socket)>();
         public async Task<bool> CheckPass(Socket s)
         {
             if (passKey == null)
@@ -246,15 +226,10 @@ namespace TgenNetProtocol
 
         public void PollEvents()
         {
-            while (listener.Poll(0, SelectMode.SelectRead))//Equivelent to listener.Pending() (TcpListener.Pending())
+            while (listener.Poll(0, SelectMode.SelectRead))//Equivelent to `TcpListener.Pending()`
                 AcceptIncomingClient(); //Method also adds the client to the clients list
 
-            for (int i = checkPassList.Count - 1; i >= 0; i--)
-                AddApprovedClients(checkPassList[i]);
-
-            //Amount of clients can change during tick
-            //int currentClients = AmountOfClients; //this value holds the connected clients during the tick
-            for (int i = 0; i < AmountOfClients; i++) //AmountOfClients = length of clients list
+            for (int i = 0; i < AmountOfClients; i++)
             {
                 ClientsType client = clients[i];
                 HandleClientPacket(client);

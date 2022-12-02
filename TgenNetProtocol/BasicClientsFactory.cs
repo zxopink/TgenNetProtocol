@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
+using System.Threading.Tasks;
 
 namespace TgenNetProtocol
 {
@@ -13,6 +14,7 @@ namespace TgenNetProtocol
         {
             _idCounter = 0;
         }
+
         public ClientInfo PeerConnection(Socket sock)
         {
             return new ClientInfo(sock, _idCounter++);
