@@ -6,10 +6,10 @@ using System.Text;
 
 namespace TgenNetProtocol
 {
-    public interface IClientsFactory
+    public interface IClientsFactory<PeerType>
     {
         /// <summary>Called on newly accepted connection (After password check)</summary>
         /// <returns>A new PeerInfo</returns>
-        IPeerInfo PeerConnection(IPEndPoint endPoint, Socket sock);
+        PeerType PeerConnection(Socket sock);
     }
 }

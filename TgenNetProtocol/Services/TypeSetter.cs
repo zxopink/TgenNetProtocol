@@ -59,7 +59,7 @@ namespace TgenNetProtocol
         {
             if (caller is ClientManager)
                 return netObject.ClientMethods;
-            else if (caller is ServerManager)
+            else if (caller is IServerManager)
                 return netObject.ServerMethods;
             else if (caller is UdpManager)
                 return netObject.DgramMethods;

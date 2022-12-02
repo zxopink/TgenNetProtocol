@@ -6,14 +6,14 @@ using System.Text;
 
 namespace TgenNetProtocol
 {
-    internal class StandardClientFactroy : IClientsFactory
+    internal class StandardClientFactroy : IClientsFactory<ClientInfo>
     {
         private int _idCounter { get; set; }
         public StandardClientFactroy()
         {
             _idCounter = 0;
         }
-        public IPeerInfo PeerConnection(IPEndPoint endPoint, Socket sock)
+        public ClientInfo PeerConnection(Socket sock)
         {
             return new ClientInfo(sock, _idCounter++);
         }
