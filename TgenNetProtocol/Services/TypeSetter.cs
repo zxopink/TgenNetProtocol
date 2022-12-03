@@ -1,5 +1,4 @@
-﻿using LiteNetLib;
-using System;
+﻿using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Dynamic;
@@ -61,8 +60,10 @@ namespace TgenNetProtocol
                 return netObject.ClientMethods;
             else if (caller is IServerManager)
                 return netObject.ServerMethods;
+#if IncludeUDP
             else if (caller is UdpManager)
                 return netObject.DgramMethods;
+#endif
             else
                 throw new ArgumentException($"{nameof(caller)} is not a valid NetManager type: {caller.GetType()}");
         }
