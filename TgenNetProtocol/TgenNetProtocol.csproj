@@ -19,14 +19,9 @@
   </PropertyGroup>
 
   <!--UDP, NOT_INCLUDE-->
-  <ItemGroup Condition="$(IncludeUDP) == false">
-    <PackageReference Remove="LiteNetLib" Version="0.9.5.2" />
-    <Compile Remove="Udp\**" />
-    <EmbeddedResource Remove="Udp\**" />
-    <None Remove="Udp\**" />
-  </ItemGroup>
-  <ItemGroup Condition="$(IncludeUDP)">
-    <PackageReference Include="LiteNetLib" Version="0.9.5.2" />
+  <ItemGroup>
+    <PackageReference Condition="$(IncludeUDP)" Include="LiteNetLib" Version="0.9.5.2" />
+    <Compile Condition="$(IncludeUDP) == false" Remove="Udp\**" />
   </ItemGroup>
   <!--END OF UDP SECTION-->
   
