@@ -60,7 +60,7 @@ namespace TgenNetProtocol
                 return netObject.ClientMethods;
             else if (caller is IServerManager)
                 return netObject.ServerMethods;
-#if IncludeUDP
+#if Include_UDP
             else if (caller is UdpManager)
                 return netObject.DgramMethods;
 #endif

@@ -15,7 +15,7 @@
     <AssemblyVersion>0.8</AssemblyVersion>
 
     <IncludeUDP>false</IncludeUDP>
-    <DefineConstants Condition="'$(IncludeUDP)' == 'true'">IncludeUDP</DefineConstants>
+    <DefineConstants Condition="'$(IncludeUDP)' == 'true'">Include_UDP</DefineConstants>
   </PropertyGroup>
 
   <!--UDP, NOT_INCLUDE-->
