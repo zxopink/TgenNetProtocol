@@ -12,13 +12,13 @@ namespace TgenNetProtocol
         
         public IPEndPoint EndPoint { get => (IPEndPoint)Client.RemoteEndPoint; }
         public bool Connected { get => Client.IsActive; }
-        public Client Client { get; private set; }
+        internal Client Client { get; private set; }
         public int Id { get; private set; }
 
         public NetworkStream NetworkStream => Client.NetworkStream;
         public Socket Socket => Client.Socket;
 
-        public ClientInfo(Client client, int id)
+        internal ClientInfo(Client client, int id)
         {
             Client = client;
             Id = id;

@@ -5,7 +5,7 @@ using TgenSerializer;
 
 namespace TgenNetProtocol
 {
-    public class MTUPacket
+    internal class MTUPacket
     {
         public Bytes Data { get; private set; }
         private int fragment;

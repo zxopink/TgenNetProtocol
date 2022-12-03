@@ -9,7 +9,7 @@ using System.Threading.Tasks;
 
 namespace TgenNetProtocol
 {
-    public struct UdpInfo : IPeerInfo
+    internal struct UdpInfo : IPeerInfo
     {
         public IPEndPoint EndPoint { get; private set; }
         public NetPeer Peer { get; set; }

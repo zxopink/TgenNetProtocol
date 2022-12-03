@@ -5,10 +5,22 @@
     <TargetFramework>netstandard2.0</TargetFramework>
     <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <ApplicationIcon>icon.ico</ApplicationIcon>
+    <PackageIcon>icon.png</PackageIcon>
+    <PackageProjectUrl>https://github.com/zxopink/TgenNetProtocol</PackageProjectUrl>
+    <Description>A simple library to set up a flexable network layer with ease</Description>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <RepositoryUrl>https://github.com/zxopink/TgenNetProtocol</RepositoryUrl>
+    <PackageTags>network; protocol; tcp</PackageTags>
+    <AssemblyVersion>0.8</AssemblyVersion>
   </PropertyGroup>
 
   <ItemGroup>
     <Compile Remove="NetworkBaseClasses\MonoNetwork.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="icon.ico" />
   </ItemGroup>
 
   <ItemGroup>
@@ -22,6 +34,17 @@
 
   <ItemGroup>
     <Folder Include="ClientTcp\" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="..\icon.png">
+      <Pack>True</Pack>
+      <PackagePath>\</PackagePath>
+    </None>
+    <None Include="..\README.md">
+      <Pack>True</Pack>
+      <PackagePath>\</PackagePath>
+    </None>
   </ItemGroup>
 
 </Project>

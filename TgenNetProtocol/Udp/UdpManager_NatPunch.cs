@@ -9,7 +9,7 @@ using System.Threading.Tasks;
 
 namespace TgenNetProtocol
 {
-    public partial class UdpManager
+    internal partial class UdpManager
     {
         public delegate void NatIntroductionSuccessDelegate(IPEndPoint targetEndPoint, NatAddressType type, string token);
         public event NatIntroductionSuccessDelegate OnNatIntroductionSuccess;

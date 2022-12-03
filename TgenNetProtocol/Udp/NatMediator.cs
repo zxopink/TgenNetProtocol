@@ -9,7 +9,7 @@ using System.Text.RegularExpressions;
 
 namespace TgenNetProtocol
 {
-    public class WaitPeer
+    internal class WaitPeer
     {
         public IPEndPoint Local { get; private set; }
         public IPEndPoint Remote { get; private set; }
@@ -38,7 +38,7 @@ namespace TgenNetProtocol
             remote = Remote;
         }
     }
-    public class NatMediator : INatPunchListener
+    internal class NatMediator : INatPunchListener
     {
 
         public delegate (WaitPeer host, WaitPeer client) MatchDelegate(List<WaitPeer> waitingPeers);

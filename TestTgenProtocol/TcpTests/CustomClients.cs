@@ -34,7 +34,7 @@ namespace TestTgenProtocol.TcpTests
     {
         int _counter = 0;
         string[] names = { "yoav", "tomer", "mihal","amir", "shmuel" }; 
-        public User PeerConnection(Socket sock)
+        public User PeerConnection(Socket sock, INetManager netManager)
         {
             User u = new User(sock);
             _counter %= names.Length;

@@ -6,6 +6,7 @@ using System.Net;
 using TgenSerializer;
 using System.Threading.Tasks;
 using System.Runtime.Serialization;
+using System.Security.Principal;
 
 namespace TgenNetProtocol
 {
@@ -166,7 +167,7 @@ namespace TgenNetProtocol
             }
             socket.Send(new byte[] { 200 /*200 OK*/});
 
-            ClientsType client = ClientsFactory.PeerConnection(socket);
+            ClientsType client = ClientsFactory.PeerConnection(socket, this);
             clients.Add(client);
             ClientConnectedEvent?.Invoke(client);
         }
@@ -230,10 +231,7 @@ namespace TgenNetProtocol
                 AcceptIncomingClient(); //Method also adds the client to the clients list
 
             for (int i = 0; i < AmountOfClients; i++)
-            {
-                ClientsType client = clients[i];
-                HandleClientPacket(client);
-            }
+                HandleClientPacket(clients[i]);
         }
 
         /// <summary>
@@ -250,7 +248,7 @@ namespace TgenNetProtocol
         }
 
         /// <summary>
-        /// The Server uses this function to drop inactive clients
+        /// The Server uses this function to drop clients who threw an exception
         /// (Clients that disconnected/had a socket error)
         /// </summary>
         /// <param name="client"></param>
@@ -282,6 +280,8 @@ namespace TgenNetProtocol
             foreach (var client in clients)
                 Send(Message, client, throwOnError);
         }
+        public void Send(object Message, params ClientsType[] clients) => 
+            Send(Message, clients, false);
 
         /// <summary>
         /// Sends a message to all connected client,
@@ -402,5 +402,6 @@ namespace TgenNetProtocol
             Close();
         }
     }
-    internal interface IServerManager { } //Used for TypeSetter to identify the ServerManager because it's generic
+    /// <summary>Used for TypeSetter to identify the ServerManager because it's generic</summary>
+    internal interface IServerManager { }
 }

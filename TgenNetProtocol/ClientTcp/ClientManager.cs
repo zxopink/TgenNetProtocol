@@ -14,7 +14,7 @@ namespace TgenNetProtocol
         private CancellationTokenSource cancellationToken;
 
         private Client client;
-        public Client Client => client;
+        internal Client Client => client;
 
         //public event EventHandler OnConnect;
         public delegate void ClientActivity();
@@ -190,7 +190,7 @@ namespace TgenNetProtocol
         private void HandlePacket()
         {
             NetworkStream stm = client;
-            if (stm.DataAvailable && !client.IsControlled)
+            if (stm.DataAvailable)
             {
                 object message = Formatter.Deserialize(stm);
                 OnPacket(message);

@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 
 namespace TgenNetProtocol
 {
-    internal class StandardClientFactroy : IClientsFactory<ClientInfo>
+    public class StandardClientFactroy : IClientsFactory<ClientInfo>
     {
         private int _idCounter { get; set; }
         public StandardClientFactroy()
@@ -15,7 +15,7 @@ namespace TgenNetProtocol
             _idCounter = 0;
         }
 
-        public ClientInfo PeerConnection(Socket sock)
+        public ClientInfo PeerConnection(Socket sock, INetManager netManager)
         {
             return new ClientInfo(sock, _idCounter++);
         }

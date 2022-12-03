@@ -6,7 +6,7 @@ using TgenSerializer;
 
 namespace TgenNetProtocol
 {
-    public static class TgenPeer
+    internal static class TgenPeer
     {
         public static void Send(this NetPeer peer, object obj, DeliveryMethod deliveryMethod = DeliveryMethod.ReliableOrdered)
         {

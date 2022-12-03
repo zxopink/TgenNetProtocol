@@ -16,7 +16,7 @@ using Formatter = TgenSerializer.Formatter;
 
 namespace TgenNetProtocol
 {
-    public partial class UdpManager : INetManager
+    internal partial class UdpManager : INetManager
     {
         public bool IsRunning => RUdpClient.IsRunning;
         public IPEndPoint LocalEP => _localEP;
