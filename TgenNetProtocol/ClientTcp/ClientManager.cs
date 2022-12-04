@@ -10,9 +10,6 @@ namespace TgenNetProtocol
 {
     public partial class ClientManager : IDisposable, INetManager
     {
-        private Task pollEventsTask;
-        private CancellationTokenSource cancellationToken;
-
         private Client client;
         internal Client Client => client;
 
@@ -144,7 +141,6 @@ namespace TgenNetProtocol
         }
         public void Close()
         {
-            cancellationToken?.Cancel();
             client.Close();
             client = new Client(GetNewSocket());
         }
@@ -180,11 +176,11 @@ namespace TgenNetProtocol
             {
                 HandlePacket();
             }
-            catch (Exception)
+            catch (SocketException)
             {
-                //Packet faliure, doesn't mean the socket is unavailable
-            }
-            
+                Close();
+                throw;
+            }    
         }
 
         private void HandlePacket()
@@ -199,28 +195,22 @@ namespace TgenNetProtocol
             }
         }
 
-        /// <summary>
-        /// Opens a task that automatically poll events
-        /// </summary>
+        /// <summary>Starts a task that ends once the client instance is closed</summary>
         /// <param name="millisecondsTimeOutPerPoll">Time to sleep between each poll</param>
         /// <returns>CancellationTokenSource, to cancel the task at any time</returns>
-        public CancellationTokenSource ManagePollEvents(int millisecondsTimeOutPerPoll)
+        public async Task ManagePollEvents(int millisecondsTimeOutPerPoll)
         {
-            if (pollEventsTask != null)
-                return cancellationToken;
-
-            cancellationToken = new CancellationTokenSource();
-            pollEventsTask = ManagePollEvents(millisecondsTimeOutPerPoll, cancellationToken.Token);
-            
-            return cancellationToken;
+            while (client.Connected)
+            {
+                PollEvents();
+                await Task.Delay(millisecondsTimeOutPerPoll);
+            }
         }
 
         public async Task ManagePollEvents(int millisecondsTimeOutPerPoll, CancellationToken token)
         {
-            while (client && !token.IsCancellationRequested)
+            while (client.Connected && !token.IsCancellationRequested)
             {
-                //Make this function an automatic seperated thread poll events 
-                //And take int milliseconds as an argument for a thread.sleep() to not overload the CPU
                 PollEvents();
                 await Task.Delay(millisecondsTimeOutPerPoll, token);
             }
@@ -229,7 +219,6 @@ namespace TgenNetProtocol
         public void Dispose()
         {
             Close();
-            cancellationToken?.Dispose();
         }
     }
 }

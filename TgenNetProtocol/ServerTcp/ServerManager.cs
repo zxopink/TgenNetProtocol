@@ -13,9 +13,6 @@ namespace TgenNetProtocol
     public partial class ServerManager<ClientsType> : IDisposable, INetManager, IServerManager
         where ClientsType : IPeerInfo
     {
-        private Task pollEventsTask;
-        private CancellationTokenSource cancellationToken;
-
         public delegate void NetworkActivity(ClientsType client);
         public event NetworkActivity ClientDisconnectedEvent;
         public event Action<ClientsType, Exception> ClientAbortEvent;
@@ -100,11 +97,11 @@ namespace TgenNetProtocol
             this.Formatter = formatter;
         }
 
-        private bool active; // field
+        private bool active;
 
         /// <summary>Returns if the listener is active, not related to states with clients</summary>
-        public bool Active => active;   // property
-        public int AmountOfClients => clients.Count; // property
+        public bool Active => active;
+        public int AmountOfClients => clients.Count;
 
         public string PublicIp
         {
@@ -234,9 +231,7 @@ namespace TgenNetProtocol
                 HandleClientPacket(clients[i]);
         }
 
-        /// <summary>
-        /// Stop and drop communications with a client
-        /// </summary>
+        /// <summary>Stop and drop communications with a client</summary>
         /// <param name="client">The id of the client</param>
         public void KickClient(ClientsType client)
         {
@@ -245,6 +240,13 @@ namespace TgenNetProtocol
             socket.Close();
             if(removed)
                 ClientDisconnectedEvent?.Invoke(client);
+        }
+
+        /// <summary>Stop and drop communications with everyone connected</summary>
+        public void KickAll()
+        {
+            for (int i = AmountOfClients - 1; i >= 0; i--)
+                KickClient(clients[i]);
         }
 
         /// <summary>
@@ -331,24 +333,24 @@ namespace TgenNetProtocol
         }
 
         /// <summary>
-        /// Opens a task that automatically poll events
+        /// Opens a task that polls events until the listener is closed and no clients are connected
         /// </summary>
         /// <param name="millisecondsTimeOutPerPoll">Time to sleep between each poll</param>
         /// <returns>CancellationTokenSource, to cancel the task at any time</returns>
-        public CancellationTokenSource ManagePollEvents(int millisecondsTimeOutPerPoll)
+        public async Task ManagePollEvents(int millisecondsTimeOutPerPoll)
         {
-            if (pollEventsTask != null)
-                return cancellationToken;
-
-            cancellationToken = new CancellationTokenSource();
-            pollEventsTask = ManagePollEvents(millisecondsTimeOutPerPoll, cancellationToken.Token);
-
-            return cancellationToken;
+            while (Active || AmountOfClients > 0)
+            {
+                //Make this function an automatic seperated thread poll events 
+                //And take int milliseconds as an argument for a thread.sleep() to not overload the CPU
+                PollEvents();
+                await Task.Delay(millisecondsTimeOutPerPoll);
+            }
         }
 
         public async Task ManagePollEvents(int millisecondsTimeOutPerPoll, CancellationToken token)
         {
-            while (!token.IsCancellationRequested)
+            while (Active || AmountOfClients > 0 || !token.IsCancellationRequested)
             {
                 //Make this function an automatic seperated thread poll events 
                 //And take int milliseconds as an argument for a thread.sleep() to not overload the CPU
@@ -374,24 +376,10 @@ namespace TgenNetProtocol
         /// </summary>
         public void Close()
         {
-            try
-            {
-                if (active && listener != null)
-                {
-                    Stop();
-                    for (int i = 0; i < AmountOfClients; i++)
-                    {
-                        ClientsType client = clients[i];
-                        KickClient(client);
-                    }
-                    cancellationToken?.Cancel();
-                    cancellationToken?.Dispose();
-                }
-            }
-            catch (Exception)
-            {
+            if (active && listener != null)
+                Stop();
 
-            }
+            KickAll();
         }
 
         /// <summary>
