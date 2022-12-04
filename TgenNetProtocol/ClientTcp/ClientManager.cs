@@ -65,7 +65,7 @@ namespace TgenNetProtocol
         public ClientManager()
         {
             client = new Client(GetNewSocket()); //make an empty one that will be replaced for later
-            formatter = new TgenSerializer.Formatter();
+            formatter = new TgenFormatter();
         }
         public ClientManager(IFormatter formatter)
         {
@@ -117,7 +117,7 @@ namespace TgenNetProtocol
                 OnConnect?.Invoke();
                 return true;
             }
-            catch (SocketException e)
+            catch (SocketException)
             {
                 Close();
                 if(throwOnError) throw;
@@ -157,7 +157,7 @@ namespace TgenNetProtocol
                 else
                     throw new SocketException((int)SocketError.NotConnected);
             }
-            catch (Exception e) //Usually gets thrown when the server aborted/kicked the client
+            catch (Exception) //Usually gets thrown when the server aborted/kicked the client
             {
                 Close();
                 OnDisconnect?.Invoke();

@@ -42,7 +42,7 @@ namespace TgenNetProtocol
             dualMode = true;
 
             active = false;
-            Formatter = new TgenSerializer.Formatter();
+            Formatter = new TgenFormatter();
         }
         /// <summary>
         /// Uses 'TgenSerializer' as a default Formatter
@@ -54,7 +54,7 @@ namespace TgenNetProtocol
             dualMode = false;
 
             active = false;
-            Formatter = new TgenSerializer.Formatter();
+            Formatter = new TgenFormatter();
         }
         /// <summary>
         /// Uses 'TgenSerializer' as a default Formatter
@@ -66,7 +66,7 @@ namespace TgenNetProtocol
             dualMode = false;
 
             active = false;
-            Formatter = new TgenSerializer.Formatter();
+            Formatter = new TgenFormatter();
         }
 
         public ServerManager(int port, IFormatter formatter, IClientsFactory<ClientsType> clientsFactory)
@@ -211,7 +211,7 @@ namespace TgenNetProtocol
             }
             //the listener WILL crash when client hangs the server
             //the catch makes sure to handle the program properly when a client leaves
-            catch (Microsoft.CSharp.RuntimeBinder.RuntimeBinderException e)
+            catch (Microsoft.CSharp.RuntimeBinder.RuntimeBinderException)
             {
                 //Methods mismatch, critical issue
                 throw;
@@ -274,7 +274,7 @@ namespace TgenNetProtocol
                 Formatter.Serialize(stm, Message);
             }
             catch (SerializationException) { throw; } //Message cannot be serialized
-            catch (Exception e) { if (throwOnError) throw; /*client left as the message was serialized*/ }
+            catch (Exception) { if (throwOnError) throw; /*client left as the message was serialized*/ }
         }
 
         public void Send(object Message, IEnumerable<ClientsType> clients, bool throwOnError = false)
