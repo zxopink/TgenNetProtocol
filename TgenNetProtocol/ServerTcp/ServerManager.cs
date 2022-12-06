@@ -7,6 +7,7 @@ using TgenSerializer;
 using System.Threading.Tasks;
 using System.Runtime.Serialization;
 using System.Security.Principal;
+using System.Collections.ObjectModel;
 
 namespace TgenNetProtocol
 {
@@ -24,6 +25,7 @@ namespace TgenNetProtocol
         public event RequestPending ClientPendingEvent;
         public event Action<Socket> ClientDeclinedEvent;
         private List<ClientsType> clients = new List<ClientsType>();
+        public ReadOnlyCollection<ClientsType> Clients => clients.AsReadOnly();
         private Socket listener;
         private readonly bool dualMode; //NEW VAR
 
