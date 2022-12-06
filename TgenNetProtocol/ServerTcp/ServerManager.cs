@@ -332,30 +332,33 @@ namespace TgenNetProtocol
             }
         }
 
-        /// <summary>
-        /// Opens a task that polls events until the listener is closed and no clients are connected
-        /// </summary>
-        /// <param name="millisecondsTimeOutPerPoll">Time to sleep between each poll</param>
+        /// <summary>Opens a task that polls events until the listener is closed and no clients are connected</summary>
+        /// <param name="millisecondsInterval">Milliseconds to sleep between each poll</param>
         /// <returns>CancellationTokenSource, to cancel the task at any time</returns>
-        public async Task ManagePollEvents(int millisecondsTimeOutPerPoll)
+        public Task ManagePollEvents(int millisecondsInterval) =>
+            ManagePollEvents(TimeSpan.FromMilliseconds(millisecondsInterval));
+
+        /// <summary>Opens a task that polls events until the listener is closed and no clients are connected</summary>
+        /// <param name="interval">Time to sleep between each poll</param>
+        /// <returns>CancellationTokenSource, to cancel the task at any time</returns>
+        public async Task ManagePollEvents(TimeSpan interval)
         {
             while (Active || AmountOfClients > 0)
             {
-                //Make this function an automatic seperated thread poll events 
-                //And take int milliseconds as an argument for a thread.sleep() to not overload the CPU
                 PollEvents();
-                await Task.Delay(millisecondsTimeOutPerPoll);
+                await Task.Delay(interval);
             }
         }
 
-        public async Task ManagePollEvents(int millisecondsTimeOutPerPoll, CancellationToken token)
+        public Task ManagePollEvents(int millisecondsInterval, CancellationToken token) =>
+            ManagePollEvents(TimeSpan.FromMilliseconds(millisecondsInterval), token);
+
+        public async Task ManagePollEvents(TimeSpan interval, CancellationToken token)
         {
-            while (Active || AmountOfClients > 0 || !token.IsCancellationRequested)
+            while ((Active || AmountOfClients > 0) && !token.IsCancellationRequested)
             {
-                //Make this function an automatic seperated thread poll events 
-                //And take int milliseconds as an argument for a thread.sleep() to not overload the CPU
                 PollEvents();
-                await Task.Delay(millisecondsTimeOutPerPoll, token);
+                await Task.Delay(interval, token);
             }
         }
 

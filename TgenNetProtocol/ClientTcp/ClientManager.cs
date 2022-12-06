@@ -196,25 +196,34 @@ namespace TgenNetProtocol
         }
 
         /// <summary>Starts a task that ends once the client instance is closed</summary>
-        /// <param name="millisecondsTimeOutPerPoll">Time to sleep between each poll</param>
+        /// <param name="interval">Time to sleep between each poll</param>
         /// <returns>CancellationTokenSource, to cancel the task at any time</returns>
-        public async Task ManagePollEvents(int millisecondsTimeOutPerPoll)
+        public async Task ManagePollEvents(TimeSpan interval)
         {
             while (client.Connected)
             {
                 PollEvents();
-                await Task.Delay(millisecondsTimeOutPerPoll);
+                await Task.Delay(interval);
             }
         }
 
-        public async Task ManagePollEvents(int millisecondsTimeOutPerPoll, CancellationToken token)
+        /// <summary>Starts a task that ends once the client instance is closed</summary>
+        /// <param name="millisecondsInterval">Milliseconds to sleep between each poll</param>
+        /// <returns>CancellationTokenSource, to cancel the task at any time</returns>
+        public Task ManagePollEvents(int millisecondsInterval) =>
+            ManagePollEvents(TimeSpan.FromMilliseconds(millisecondsInterval));
+
+        public async Task ManagePollEvents(TimeSpan interval, CancellationToken token)
         {
             while (client.Connected && !token.IsCancellationRequested)
             {
                 PollEvents();
-                await Task.Delay(millisecondsTimeOutPerPoll, token);
+                await Task.Delay(interval, token);
             }
         }
+
+        public Task ManagePollEvents(int millisecondsInterval, CancellationToken token) =>
+            ManagePollEvents(TimeSpan.FromMilliseconds(millisecondsInterval), token);
 
         public void Dispose()
         {
