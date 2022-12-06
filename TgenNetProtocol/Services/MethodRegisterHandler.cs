@@ -41,6 +41,13 @@ namespace TgenNetProtocol
             return false;
         }
 
+        /// <summary>Removes all callbacks that listen to the given type</summary>
+        /// <typeparam name="T">The type to remove</typeparam>
+        /// <returns>true if the element is succesfully found and removed; otherwise false.</returns>
+        internal bool UnregisterType<T>() =>
+            RegisteredMethods.Remove(typeof(T));
+
+
         internal void CallRegisters(object message) =>
             CallRegisters(message, null);
 

@@ -38,5 +38,8 @@ namespace TgenNetProtocol
         {
             //Empty
         }
+
+        public new ServerManager Start(int backlog) => (ServerManager)base.Start(backlog);
+        public new ServerManager Start() => (ServerManager)base.Start();
     }
 }

@@ -7,6 +7,7 @@ using TgenSerializer;
 using System.Threading.Tasks;
 using System.Runtime.Serialization;
 using System.Security.Principal;
+using System.Collections.ObjectModel;
 
 namespace TgenNetProtocol
 {
@@ -24,6 +25,7 @@ namespace TgenNetProtocol
         public event RequestPending ClientPendingEvent;
         public event Action<Socket> ClientDeclinedEvent;
         private List<ClientsType> clients = new List<ClientsType>();
+        public ReadOnlyCollection<ClientsType> Clients => clients.AsReadOnly();
         private Socket listener;
         private readonly bool dualMode; //NEW VAR
 
@@ -319,10 +321,10 @@ namespace TgenNetProtocol
             }
         }
 
-        public void Start() => 
+        public ServerManager<ClientsType> Start() => 
             Start((int)SocketOptionName.MaxConnections);
 
-        public void Start(int backlog)
+        public ServerManager<ClientsType> Start(int backlog)
         {
             if (!active)
             {
@@ -330,6 +332,7 @@ namespace TgenNetProtocol
                 listener = GetNewListenSocket();
                 listener.Listen(backlog);
             }
+            return this;
         }
 
         /// <summary>Opens a task that polls events until the listener is closed and no clients are connected</summary>
