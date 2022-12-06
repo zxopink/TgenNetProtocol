@@ -319,10 +319,10 @@ namespace TgenNetProtocol
             }
         }
 
-        public void Start() => 
+        public ServerManager<ClientsType> Start() => 
             Start((int)SocketOptionName.MaxConnections);
 
-        public void Start(int backlog)
+        public ServerManager<ClientsType> Start(int backlog)
         {
             if (!active)
             {
@@ -330,6 +330,7 @@ namespace TgenNetProtocol
                 listener = GetNewListenSocket();
                 listener.Listen(backlog);
             }
+            return this;
         }
 
         /// <summary>
