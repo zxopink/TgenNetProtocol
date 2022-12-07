@@ -7,9 +7,9 @@ using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace TgenNetProtocol
+namespace TgenNetProtocol.Udp
 {
-    internal partial class UdpManager
+    public partial class UdpManager
     {
         public delegate void NatIntroductionSuccessDelegate(IPEndPoint targetEndPoint, NatAddressType type, string token);
         public event NatIntroductionSuccessDelegate OnNatIntroductionSuccess;
@@ -18,7 +18,7 @@ namespace TgenNetProtocol
         /// <exception cref="NullReferenceException">thrown if client has yet to connect another peer</exception>
         public Task<NetPeer> RequestNatPunch(string additionalInfo = default)
         {
-            var server = RUdpClient.FirstPeer;
+            NetPeer server = RUdpClient.FirstPeer;
             if(server == null) throw new NullReferenceException($"{nameof(RUdpClient.FirstPeer)} is null");
 
             return RequestNatPunch(server.EndPoint, additionalInfo);

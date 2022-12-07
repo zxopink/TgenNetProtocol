@@ -7,9 +7,9 @@ using System.Net;
 using System.Text;
 using System.Text.RegularExpressions;
 
-namespace TgenNetProtocol
+namespace TgenNetProtocol.Udp
 {
-    internal class WaitPeer
+    public class WaitPeer
     {
         public IPEndPoint Local { get; private set; }
         public IPEndPoint Remote { get; private set; }
@@ -38,11 +38,8 @@ namespace TgenNetProtocol
             remote = Remote;
         }
     }
-    internal class NatMediator : INatPunchListener
+    public class NatMediator : INatPunchListener
     {
-
-        public delegate (WaitPeer host, WaitPeer client) MatchDelegate(List<WaitPeer> waitingPeers);
-
         /// <summary>Calls an event on NatIntroductionRequest before the waiting peer is added to the pending peers list</summary>
         public event Action<WaitPeer> OnRequest;
         public List<WaitPeer> PendingPeers { get; private set; }
@@ -60,10 +57,9 @@ namespace TgenNetProtocol
             Manager.NatPunchEnabled = true;
         }
 
-        public void Pair(MatchDelegate MediatorFunc) => Pair(MediatorFunc, string.Empty);
-        public void Pair(MatchDelegate MediatorFunc, string additionalInfo)
+        public void Pair(WaitPeer host, WaitPeer client) => Pair(host, client, string.Empty);
+        public void Pair(WaitPeer host, WaitPeer client, string additionalInfo)
         {
-            (WaitPeer host, WaitPeer client) = MediatorFunc(PendingPeers);
             PendingPeers.Remove(host);
             PendingPeers.Remove(client);
             Introduce(host, client, additionalInfo);
@@ -84,14 +80,14 @@ namespace TgenNetProtocol
             NetPeer found = default;
             foreach (var peer in Manager.ConnectedPeerList)
             {
-                if (peer.EndPoint == remoteEndPoint)
+                if (peer.EndPoint.Equals(remoteEndPoint))
                     found = peer;
             }
             if (found == default && OnlyAcceptConnectedPeers) return;
 
             var waitPeer = new WaitPeer(localEndPoint, remoteEndPoint, found, token);
-            OnRequest?.Invoke(waitPeer);
             PendingPeers.Add(waitPeer);
+            OnRequest?.Invoke(waitPeer);
         }
 
         public void OnNatIntroductionSuccess(IPEndPoint targetEndPoint, NatAddressType type, string token)

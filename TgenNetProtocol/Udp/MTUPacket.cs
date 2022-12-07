@@ -3,9 +3,9 @@ using System.Collections.Generic;
 using System.Text;
 using TgenSerializer;
 
-namespace TgenNetProtocol
+namespace TgenNetProtocol.Udp
 {
-    internal class MTUPacket
+    public class MTUPacket
     {
         public Bytes Data { get; private set; }
         private int fragment;

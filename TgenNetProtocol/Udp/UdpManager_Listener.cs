@@ -7,11 +7,10 @@ using System.Net.Sockets;
 using System.Runtime.Serialization;
 using System.Text;
 using TgenSerializer;
-using Formatter = TgenSerializer.Formatter;
 
-namespace TgenNetProtocol
+namespace TgenNetProtocol.Udp
 {
-    internal partial class UdpManager : INetEventListener, IDeliveryEventListener, INtpEventListener, IDisposable
+    public partial class UdpManager : INetEventListener, IDeliveryEventListener, INtpEventListener, IDisposable
     {
         public void OnConnectionRequest(ConnectionRequest request)
         {
@@ -44,7 +43,7 @@ namespace TgenNetProtocol
             try
             {
                 UdpInfo info = peer != null ? new UdpInfo(peer) : new UdpInfo(endPoint);
-                var obj = Formatter.FromBytes(data);
+                object obj = Formatter.Deserialize(data);
                 TypeSetter.SendNewNetMessage(obj, this, info);
             }
             catch (SerializationException e)

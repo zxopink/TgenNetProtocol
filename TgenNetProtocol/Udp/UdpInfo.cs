@@ -7,9 +7,9 @@ using System.Net.Sockets;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace TgenNetProtocol
+namespace TgenNetProtocol.Udp
 {
-    internal struct UdpInfo : IPeerInfo
+    public struct UdpInfo : IPeerInfo
     {
         public IPEndPoint EndPoint { get; private set; }
         public NetPeer Peer { get; set; }

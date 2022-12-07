@@ -11,12 +11,10 @@ using System.Collections.Concurrent;
 using LiteNetLib;
 using LiteNetLib.Utils;
 using System.Runtime.Serialization;
-using ISerializable = TgenSerializer.ISerializable;
-using Formatter = TgenSerializer.Formatter;
 
-namespace TgenNetProtocol
+namespace TgenNetProtocol.Udp
 {
-    internal partial class UdpManager : INetManager
+    public partial class UdpManager : INetManager
     {
         public bool IsRunning => RUdpClient.IsRunning;
         public IPEndPoint LocalEP => _localEP;
@@ -24,6 +22,7 @@ namespace TgenNetProtocol
         public int Port => _localEP.Port;
         //Used to set a listening port
         private IPEndPoint _localEP { get; set; }
+        public TgenFormatter Formatter { get; set; }
 
         public bool NatPunchEnabled { get => RUdpClient.NatPunchEnabled; set => RUdpClient.NatPunchEnabled = value; }
         public int DisconnectTimeout { get => RUdpClient.DisconnectTimeout; set => RUdpClient.DisconnectTimeout = value; }
@@ -90,9 +89,11 @@ namespace TgenNetProtocol
         {
             RUdpClient = new NetManager(this);
             _localEP = localEP;
+            Formatter = new TgenFormatter();
         }
 
-        public void Start() =>
+        /// <summary>Start logic thread and listening on selected port</summary>
+        public bool Start() =>
             RUdpClient.Start(_localEP.Port);
 
         public void PollEvents()
@@ -107,29 +108,27 @@ namespace TgenNetProtocol
         /// </summary>
         /// <param name="millisecondsTimeOutPerPoll"></param>
         /// <returns>Token source to cancel the task</returns>
-        public CancellationTokenSource ManagePollEvents(int millisecondsTimeOutPerPoll)
-        {
-            if (PollEventsAsync != null && PollEventsAsync.IsCompleted) 
-                return TokenSource;
+        public Task ManagePollEvents(int millisecondsInterval) =>
+            ManagePollEvents(TimeSpan.FromMilliseconds(millisecondsInterval));
 
-            TokenSource = new CancellationTokenSource();
-            RUdpClient.Start(_localEP.Port);
-            PollEventsAsync = RunEvents(millisecondsTimeOutPerPoll, TokenSource.Token);
-            return TokenSource;
-        }
-
-        public Task ManagePollEvents(int millisecondsTimeOutPerPoll, CancellationToken token)
+        public async Task ManagePollEvents(TimeSpan interval)
         {
-            RUdpClient.Start(_localEP.Port);
-            return RunEvents(millisecondsTimeOutPerPoll, token);
-        }
-
-        private async Task RunEvents(int millisecondsTimeOutPerPoll, CancellationToken token)
-        {
-            while (!token.IsCancellationRequested && RUdpClient.IsRunning)
+            while (RUdpClient.IsRunning)
             {
                 PollEvents();
-                await Task.Delay(millisecondsTimeOutPerPoll);
+                await Task.Delay(interval);
+            }
+        }
+
+        public Task ManagePollEvents(int millisecondsInterval, CancellationToken token) =>
+            ManagePollEvents(TimeSpan.FromMilliseconds(millisecondsInterval), token);
+
+        public async Task ManagePollEvents(TimeSpan interval, CancellationToken token)
+        {
+            while (RUdpClient.IsRunning && !token.IsCancellationRequested)
+            {
+                PollEvents();
+                await Task.Delay(interval, token);
             }
         }
 
@@ -138,38 +137,23 @@ namespace TgenNetProtocol
             RUdpClient.Connect(host, port, ConnectionKey);
         public virtual NetPeer Connect(string host, int port, string key) =>
             RUdpClient.Connect(host, port, key);
-        public virtual NetPeer Connect(string host, int port, DataWriter connectionData) =>
-            RUdpClient.Connect(host, port, NetDataWriter.FromBytes(connectionData.GetData(), false));
 
         public virtual NetPeer Connect(IPEndPoint iPEndPoint) =>
             RUdpClient.Connect(iPEndPoint, ConnectionKey);
         public virtual NetPeer Connect(IPEndPoint iPEndPoint, string key) =>
             RUdpClient.Connect(iPEndPoint, key);
-        public virtual NetPeer Connect(IPEndPoint iPEndPoint, DataWriter connectionData) =>
-            RUdpClient.Connect(iPEndPoint, NetDataWriter.FromBytes(connectionData.GetData(), false));
 
         public virtual NetPeer Connect(IPAddress host, int port) =>
             Connect(new IPEndPoint(host, port));
         public virtual NetPeer Connect(IPAddress host, int port, string key) =>
             Connect(new IPEndPoint(host, port), key);
-        public virtual NetPeer Connect(IPAddress host, int port, DataWriter connectionData) =>
-            Connect(new IPEndPoint(host, port), connectionData);
         #endregion
 
         public void SendToAll(object obj, DeliveryMethod deliveryMethod = DeliveryMethod.ReliableOrdered)
         {
-            byte[] objGraph = Formatter.ToBytes(obj);
+            byte[] objGraph = Formatter.Serialize(obj);
             SendToAll(objGraph, deliveryMethod);
         }
-        public void SendToAll(ISerializable obj, DeliveryMethod deliveryMethod = DeliveryMethod.ReliableOrdered)
-        {
-        //Makes a DataWriter with the object's type
-            var writer = new DataWriter(obj);
-            obj.Serialize(writer);
-            SendToAll(writer, deliveryMethod);
-        }
-        public void SendToAll(DataWriter obj, DeliveryMethod deliveryMethod = DeliveryMethod.ReliableOrdered) =>
-            SendToAll(obj.GetData(), deliveryMethod);
 
         public void SendToAll(byte[] data, DeliveryMethod deliveryMethod = DeliveryMethod.ReliableOrdered)
         {
@@ -178,18 +162,9 @@ namespace TgenNetProtocol
 
         public void SendToAllExcept(object obj, NetPeer exclude, DeliveryMethod deliveryMethod = DeliveryMethod.ReliableOrdered)
         {
-            byte[] objGraph = Formatter.ToBytes(obj);
+            byte[] objGraph = Formatter.Serialize(obj);
             SendToAllExcept(objGraph, exclude, deliveryMethod);
         }
-        public void SendToAllExcept(ISerializable obj, NetPeer exclude, DeliveryMethod deliveryMethod = DeliveryMethod.ReliableOrdered)
-        {
-            //Makes a DataWriter with the object's type
-            var writer = new DataWriter(obj);
-            obj.Serialize(writer);
-            SendToAllExcept(writer, exclude, deliveryMethod);
-        }
-        public void SendToAllExcept(DataWriter obj, NetPeer exclude, DeliveryMethod deliveryMethod = DeliveryMethod.ReliableOrdered) =>
-            SendToAllExcept(obj.GetData(), exclude, deliveryMethod);
 
         public void SendToAllExcept(byte[] data, NetPeer exclude, DeliveryMethod deliveryMethod = DeliveryMethod.ReliableOrdered)
         {
@@ -199,12 +174,9 @@ namespace TgenNetProtocol
         /// <summary>Send raw UDP packet, not reliable</summary>
         public void SendUnconnectedMessage(object obj, IPEndPoint endPoint)
         {
-            byte[] objGraph = Formatter.ToBytes(obj);
+            byte[] objGraph = Formatter.Serialize(obj);
             SendUnconnectedMessage(objGraph, endPoint);
         }
-        /// <summary>Send raw UDP packet, not reliable</summary>
-        public void SendUnconnectedMessage(DataWriter obj, IPEndPoint endPoint) =>
-            SendUnconnectedMessage(obj.GetData(), endPoint);
         /// <summary>Send raw UDP packet, not reliable</summary>
         public void SendUnconnectedMessage(byte[] data, IPEndPoint endPoint) =>
             RUdpClient.SendUnconnectedMessage(data, endPoint);
