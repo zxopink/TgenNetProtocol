@@ -1,47 +1,72 @@
 # TgenNetProtocol
 An easy to work with network protocol!
-also works with forms!
-you can use both client and server in the same project, but it is recommended to separate them.
+also works with winforms!
+you can use both client and server in the same project, but it is recommended to separate them and use shared types in a third project.
 
-*if you send a custom type please make sure it is serializable by using the [serializable] attribute!*
-
-server side
+Server Side
 --------------------------------------------------------------------------------------------------------------------------------
 
-`starting a server`:
-for the server side there's a ServerManager class which manages the server side listener.
-to start the server all you need to do is create a new object of ServerManager type with the port you'd like the server to listen, then when use the method "start" to start the server.
+Start the server:
+```cs
+ServerManager server = new ServerManager(port: 4568).Start();
+Task serverPollEvents = server.ManagePollEvents(millisecondsInterval: 50);
+```
 
-`send a message`:
-you can send a message to a specific client by using the "Send" method 
-or you can send everyone a message by using the "SendToAll" method
-or you can send to everyone except a specific client by using the "SendToAllExcept"
+Send a message:
+```cs
+server.SendToAll("Hello clients!"); //Send all clients
+server.Send("Hello client 1", server.Clients[index: 0]); //Send to specific client
+server.SendToAllExcept("Hello everyone but client 1", server.Clients[index: 0]); //Send to everyone except a specific client
+```
 
-`receive a message`:
-this one is fairly easy, a unique thing about this protocol is that the message receivement works by types and events and is being managed by attributes.
-simply make a new method inside your class (make sure the class inherits from the "NetworkBehavour" class or "FormNetworkBehavour" if you work with forms) and put a "[ServerReceiver]" attributes on it!
-the method must return void and take one custom argument (whatever type you choose) and an option secondly type of integer argument in case you want the ID of the client who sent the message.
-the method will be invoked whenever the type of it's first argument was recived, if the first argument of the method is type of object the method will be called everytime a message is Recived.
+Receive a message (Register callbacks):
+```cs
+server.Register<string>((msg, client) => Console.WriteLine($"{client} sent {msg}"));
 
-client side
+/*to ungregister methods:*/
+server.Unregister<string>(); //Remove all the registered callbacks to `string` type
+```
+
+Receive a message (Await packet):
+```cs
+string message = await server.WaitFor<string>(server.Clients[0]);
+//Or use a timeout (will return default if timed-out)
+string message = await server.WaitFor<string>(server.Clients[0], TimeSpan.FromSeconds(5));
+```
+
+Client Side
 --------------------------------------------------------------------------------------------------------------------------------
 
-`starting a server`:
-for the client side there's a ClientManager class which manages the client side listener.
-to start the client all you need to do is create a new object of ClientManager type with the port and ip you'd like the client to connect the server, then when use the method "connect" to connect the server.
+Start the client:
+```cs
+ClientManager client = new ClientManager();
+client.Connect("127.0.0.1", 4568);
+Task clientPollEvents = client.ManagePollEvents(millisecondsInterval: 50);
+```
 
-`send a message`:
-you can send a message to the server by using the "Send" method.
+Send a message:
+```cs
+client.Send("Hello server!");
+```
 
-`receive a message`:
-this one is fairly easy too and similar to the server.
-just like the server you need to make a new method inside your class (make sure the class inherits from the "NetworkBehavour" class or "FormNetworkBehavour" if you work with forms) and put a "[ClientReceiver]" attributes on it!
-the method must return void and take one custom argument (whatever type you choose).
-the method will be invoked whenever the type of it's first argument was recived by the server, if the first argument of the method is type of object the method will be called everytime a message is Recived.
+Receive a message (Register callbacks):
+```cs
+client.Register<string>(msg => Console.WriteLine($"server sent {msg}"));
 
-notes
+/*to ungregister methods:*/
+client.Unregister<string>(); //Remove all the registered callbacks to `string` type
+```
+
+Receive a message (Await packet):
+```cs
+string message = await client.WaitFor<string>();
+//Or use a timeout (will return default if timed-out)
+string message = await client.WaitFor<string>(TimeSpan.FromSeconds(5));
+```
+
+Notes
 --------------------------------------------------------------------------------------------------------------------------------
-please credit me if you use this protocol!
-and please leave a review or report any bugs! it's my first github project and I want to improve so I can make more projects like this!
+*In this example I used strings but you can use any type that's primitive or has the `[Serializable]` attribute
 
-made by: Yoav Haik
+Credit me if you use this protocol!
+Made by: Yoav Haik

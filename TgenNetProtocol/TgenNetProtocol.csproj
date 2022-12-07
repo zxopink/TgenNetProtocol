@@ -1,94 +1,56 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
-<Project ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
-  <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
   <PropertyGroup>
-    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
-    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
-    <ProjectGuid>{4CA65E14-8DB9-4F1F-9DDF-3DA754FD3FA1}</ProjectGuid>
-    <OutputType>Library</OutputType>
-    <RootNamespace>TgenNetProtocol</RootNamespace>
-    <AssemblyName>TgenNetProtocol</AssemblyName>
-    <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
-    <FileAlignment>512</FileAlignment>
-    <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
-    <Deterministic>true</Deterministic>
-    <TargetFrameworkProfile />
+    <Authors>Yoav Haik</Authors>
+    <TargetFramework>netstandard2.0</TargetFramework>
+    <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <ApplicationIcon>icon.ico</ApplicationIcon>
+    <PackageIcon>icon.png</PackageIcon>
+    <PackageProjectUrl>https://github.com/zxopink/TgenNetProtocol</PackageProjectUrl>
+    <Description>A simple library to set up a flexable network layer with ease</Description>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <RepositoryUrl>https://github.com/zxopink/TgenNetProtocol</RepositoryUrl>
+    <PackageTags>network; protocol; tcp</PackageTags>
+    <Version>0.7.0</Version>
+
+    <IncludeUDP>false</IncludeUDP>
+    <DefineConstants Condition="'$(IncludeUDP)' == 'true'">Include_UDP</DefineConstants>
   </PropertyGroup>
-  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
-    <PlatformTarget>AnyCPU</PlatformTarget>
-    <DebugSymbols>true</DebugSymbols>
-    <DebugType>full</DebugType>
-    <Optimize>false</Optimize>
-    <OutputPath>bin\Debug\</OutputPath>
-    <DefineConstants>DEBUG;TRACE</DefineConstants>
-    <ErrorReport>prompt</ErrorReport>
-    <WarningLevel>4</WarningLevel>
-    <DocumentationFile>bin\Debug\TgenNetProtocol.xml</DocumentationFile>
-    <RegisterForComInterop>false</RegisterForComInterop>
-    <NoWarn>1591;</NoWarn>
-  </PropertyGroup>
-  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
-    <PlatformTarget>AnyCPU</PlatformTarget>
-    <DebugType>pdbonly</DebugType>
-    <Optimize>true</Optimize>
-    <OutputPath>bin\Release\</OutputPath>
-    <DefineConstants>TRACE</DefineConstants>
-    <ErrorReport>prompt</ErrorReport>
-    <WarningLevel>4</WarningLevel>
-  </PropertyGroup>
-  <PropertyGroup>
-    <StartupObject />
-  </PropertyGroup>
+
+  <!--UDP, NOT_INCLUDE-->
   <ItemGroup>
-    <Reference Include="System" />
-    <Reference Include="System.Core" />
-    <Reference Include="System.Drawing" />
-    <Reference Include="System.Windows.Forms" />
-    <Reference Include="System.Xml.Linq" />
-    <Reference Include="System.Data.DataSetExtensions" />
-    <Reference Include="Microsoft.CSharp" />
-    <Reference Include="System.Data" />
-    <Reference Include="System.Net.Http" />
-    <Reference Include="System.Xml" />
-    <Reference Include="TgenSerializer, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\..\TgenSerializer\TgenSerializer\bin\Release\TgenSerializer.dll</HintPath>
-    </Reference>
-    <Reference Include="UnityEngine">
-      <HintPath>..\..\..\..\..\..\..\Users\yoavh\source\repos\Slime Ranchers Multiplayer\Slime Ranchers Multiplayer\obj\UnityEngine.dll</HintPath>
-    </Reference>
-    <Reference Include="UnityEngine.CoreModule">
-      <HintPath>..\..\..\..\..\..\..\Users\yoavh\source\repos\Slime Ranchers Multiplayer\Slime Ranchers Multiplayer\obj\UnityEngine.CoreModule.dll</HintPath>
-    </Reference>
+    <PackageReference Condition="$(IncludeUDP)" Include="LiteNetLib" Version="0.9.5.2" />
+    <Compile Condition="$(IncludeUDP) == false" Remove="Udp\**" />
   </ItemGroup>
+  <!--END OF UDP SECTION-->
+  
   <ItemGroup>
-    <Compile Include="Atrributes.cs" />
-    <Compile Include="Client.cs" />
-    <Compile Include="ClientData.cs" />
-    <Compile Include="ClientManager.cs" />
-    <Compile Include="ControlledClient.cs" />
-    <Compile Include="FileLog.cs" />
-    <Compile Include="INetworkObject.cs" />
-    <Compile Include="MethodData.cs" />
-    <Compile Include="NetworkBaseClasses\FormNetworkBehavour.cs" />
-    <Compile Include="NetworkBaseClasses\FormNetworkBehavour.Designer.cs">
-      <DependentUpon>FormNetworkBehavour.cs</DependentUpon>
-    </Compile>
-    <Compile Include="NetworkBaseClasses\MonoNetwork.cs" />
-    <Compile Include="NetworkBaseClasses\NetworkBehavour.cs" />
-    <Compile Include="TgenTools\NetworkFile.cs" />
-    <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="ServerManager.cs" />
-    <Compile Include="TgenTools\TgenTools.cs" />
-    <Compile Include="TypeSetter.cs" />
+    <Compile Remove="NetworkBaseClasses\MonoNetwork.cs" />
   </ItemGroup>
+
   <ItemGroup>
-    <None Include="App.config" />
+    <Content Include="icon.ico" />
   </ItemGroup>
+  
+
   <ItemGroup>
-    <EmbeddedResource Include="NetworkBaseClasses\FormNetworkBehavour.resx">
-      <DependentUpon>FormNetworkBehavour.cs</DependentUpon>
-    </EmbeddedResource>
+    <PackageReference Include="Microsoft.CSharp" Version="4.7.0" />
   </ItemGroup>
-  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\TgenSerializer\TgenSerializer\TgenSerializer.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="..\icon.png">
+      <Pack>True</Pack>
+      <PackagePath>\</PackagePath>
+    </None>
+    <None Include="..\README.md">
+      <Pack>True</Pack>
+      <PackagePath>\</PackagePath>
+    </None>
+  </ItemGroup>
+
 </Project>

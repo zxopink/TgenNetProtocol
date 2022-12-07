@@ -1,17 +1,13 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Data;
-using System.Diagnostics;
 using System.Linq;
+using System.Windows.Forms;
 using System.Reflection;
-using System.Runtime.InteropServices;
-using System.Threading;
-using System.Threading.Tasks;
-using System.Xml.Linq;
 
-namespace TgenNetProtocol
+namespace TgenNetProtocol.WinForms
 {
-    public abstract class NetworkBehavour : INetworkObject
+    public partial class FormNetworkBehavour : Form, INetworkObject
     {
         public static readonly Dictionary<Type/*Object Type*/,
             Dictionary<Type /*Attribute type*/, List<MethodData> /*Methods of object*/>> TotalNetMethods = new Dictionary<Type, Dictionary<Type, List<MethodData>>>();
@@ -31,14 +27,16 @@ namespace TgenNetProtocol
         /// if not set, listens to all active Netmanagers</summary>
         public INetManager[] NetManagers { get; private set; } = Array.Empty<INetManager>();
 
-        public NetworkBehavour()
+        public FormNetworkBehavour()
         {
             SetUpMethods();
-
-            AddToAttributes();
+            this.HandleCreated += FormReady;
         }
 
-        public NetworkBehavour(params INetManager[] Managers) : this()
+        private void FormReady(object sender, EventArgs e) =>
+            AddToAttributes();
+
+        public FormNetworkBehavour(params INetManager[] Managers) : this()
         {
             NetManagers = Managers;
         }
@@ -94,10 +92,27 @@ namespace TgenNetProtocol
             NetworkMethods.Clear();
         }
 
-        public virtual void Dispose() =>
-            RemoveFromAttributes();//Task.Run(RemoveFromAttributes);
+        /// <summary>
+        /// Removes the object's methods from the network calls
+        /// </summary>
+        public new virtual void Dispose()
+        {
+            //Task.Run(RemoveFromAttributes);
+            RemoveFromAttributes();
+            base.Dispose(true);
+        }
 
-        public virtual void InvokeNetworkMethods(MethodData method, object[] objetsToSend) =>
-            method.Invoke(objetsToSend);
+        private void FormNetworkBehavour_Load(object sender, EventArgs e)
+        {
+
+        }
+
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="method">The Method to invoke</param>
+        /// <param name="objetsToSend">the arguments the Method takes</param>
+        public void InvokeNetworkMethods(MethodData method, object[] objetsToSend) =>
+            Invoke(method.Method, objetsToSend);
     }
 }

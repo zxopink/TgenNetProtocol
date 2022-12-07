@@ -27,10 +27,9 @@ namespace TgenNetProtocol
         volatile List<SafeMonoInvokeData> waitingMethods = new List<SafeMonoInvokeData>();
         volatile bool isInvokingMethods = false;
 
-        private IEnumerable<MethodInfo> serverMethods;
-        private IEnumerable<MethodInfo> clientMethods;
-        public IEnumerable<MethodInfo> ServerMethods { get => serverMethods; }
-        public IEnumerable<MethodInfo> ClientMethods { get => clientMethods; }
+        public List<MethodData> ServerMethods { get; private set; }
+        public List<MethodData> ClientMethods { get; private set; }
+        public List<MethodData> DgramMethods { get; private set; }
 
         public MonoNetwork()
         {
@@ -42,9 +41,23 @@ namespace TgenNetProtocol
 
         public void SetUpMethods()
         {
-            Type type = this.GetType();
-            serverMethods = type.GetMethods().Where(x => x.GetCustomAttributes(typeof(ServerReceiverAttribute), false).FirstOrDefault() != null);
-            clientMethods = type.GetMethods().Where(x => x.GetCustomAttributes(typeof(ClientReceiverAttribute), false).FirstOrDefault() != null);
+            MethodInfo[] methods = GetType().GetMethods(BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Instance | BindingFlags.FlattenHierarchy | BindingFlags.InvokeMethod);
+            IEnumerable<MethodInfo> serverActions = methods.Where(x => x.GetCustomAttributes(typeof(ServerReceiverAttribute), false).FirstOrDefault() != null);
+            IEnumerable<MethodInfo> clientActions = methods.Where(x => x.GetCustomAttributes(typeof(ClientReceiverAttribute), false).FirstOrDefault() != null);
+            IEnumerable<MethodInfo> dgramAction = methods.Where(x => x.GetCustomAttributes(typeof(DgramReceiverAttribute), false).FirstOrDefault() != null);
+
+            ServerMethods = GetMethodsData(serverActions);
+            ClientMethods = GetMethodsData(clientActions);
+            DgramMethods = GetMethodsData(dgramAction);
+        }
+
+        private List<MethodData> GetMethodsData(IEnumerable<MethodInfo> methods)
+        {
+            List<MethodData> methodsData = new List<MethodData>();
+            foreach (MethodInfo item in methods)
+                methodsData.Add(new MethodData(item, this));
+
+            return methodsData;
         }
 
         /// <summary>
@@ -146,10 +159,11 @@ namespace TgenNetProtocol
 
         private void RemoveFromAttributes()
         {
+            TypeSetter.Remove(this);
             bool isDone = false;
             while (!isDone)
             {
-                if (!TypeSetter.isWorking)
+                if (!isWorking)
                 {
                     //TypeSetter.networkObjects.Remove(this);
                     isDone = true;
