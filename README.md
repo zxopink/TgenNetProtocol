@@ -1,4 +1,6 @@
 # TgenNetProtocol
+[![NuGet Package][NuGet]][NuGet-url]
+
 An easy to work with network protocol!
 also works with winforms!
 you can use both client and server in the same project, but it is recommended to separate them and use shared types in a third project.
@@ -70,3 +72,6 @@ Notes
 
 Credit me if you use this protocol!
 Made by: Yoav Haik
+
+[NuGet]: https://img.shields.io/nuget/v/TgenNetProtocol?color=blue
+[NuGet-url]: https://www.nuget.org/packages/TgenNetProtocol
