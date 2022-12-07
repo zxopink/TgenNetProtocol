@@ -23,6 +23,10 @@ client.Unregister<string>(); //Remove all the registered callbacks to `string` t
 //Send Message Client
 client.Send("Hello server!");
 
+//Recieve message client (await)
+string msg = await client.WaitFor<string>();
+msg = await client.WaitFor<string>(TimeSpan.FromSeconds(5));
+
 //Send Message Server
 server.SendToAll("Hello clients!"); //Send all clients
 server.Send("Hello client 1", server.Clients[index: 0]); //Send to specific client
