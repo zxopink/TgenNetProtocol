@@ -3,7 +3,7 @@ using TgenNetProtocol;
 
 //Start server
 ServerManager server = new ServerManager(port: 4568).Start();
-Task serverPollEvents = server.ManagePollEvents(millisecondsTimeOutPerPoll: 50);
+Task serverPollEvents = server.ManagePollEvents(millisecondsInterval: 50);
 
 //Recieve message server (Register a callback)
 server.Register<string>((msg, client) => Console.WriteLine($"{client} sent {msg}"));
@@ -14,7 +14,7 @@ string message = await server.WaitFor<string>(server.Clients[0], timeout: TimeSp
 //Start client
 ClientManager client = new ClientManager();
 client.Connect("127.0.0.1", 4568);
-Task clientPollEvents = client.ManagePollEvents(millisecondsTimeOutPerPoll: 50);
+Task clientPollEvents = client.ManagePollEvents(millisecondsInterval: 50);
 
 //Recieve message client (Register a callback)
 client.Register<string>(msg => Console.WriteLine($"server sent {msg}"));

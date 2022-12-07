@@ -168,6 +168,8 @@ namespace TgenNetProtocol
 
         public void Send<T>(bool throwOnError = false) where T : new() => Send(new T());
 
+        /// <summary>Invokes callbacks based on incoming packets.
+        /// Should be used inside an infinite loop or call the `ManagePollEvents` to handle asynchronously</summary>
         public void PollEvents()
         {
             if (!client) //If not connected

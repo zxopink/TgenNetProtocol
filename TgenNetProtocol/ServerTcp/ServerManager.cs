@@ -224,6 +224,8 @@ namespace TgenNetProtocol
             }
         }
 
+        /// <summary>Accepts awaiting clients and invokes callbacks based on incoming packets.
+        /// Should be used inside an infinite loop or call the `ManagePollEvents` to handle asynchronously</summary>
         public void PollEvents()
         {
             while (listener.Poll(0, SelectMode.SelectRead))//Equivelent to `TcpListener.Pending()`
