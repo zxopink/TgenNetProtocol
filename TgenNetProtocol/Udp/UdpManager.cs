@@ -147,9 +147,36 @@ namespace TgenNetProtocol.Udp
             Connect(new IPEndPoint(host, port));
         public virtual NetPeer Connect(IPAddress host, int port, string key) =>
             Connect(new IPEndPoint(host, port), key);
-        #endregion
 
-        public void SendToAll(object obj, DeliveryMethod deliveryMethod = DeliveryMethod.ReliableOrdered)
+        public virtual async Task<NetPeer> ConnectAsync(string host, int port)
+        {
+            NetPeer p = Connect(host, port);
+            if (p == null)
+                return p;
+
+            while (p.ConnectionState == ConnectionState.Outgoing)
+                await Task.Delay(10);
+            if (p.ConnectionState == ConnectionState.Disconnected)
+                throw new Exception("Failed to connect: " + p.EndPoint.ToString());
+
+            return p;
+        }
+        public virtual async Task<NetPeer> ConnectAsync(IPEndPoint iPEndPoint, string key)
+        {
+            NetPeer p = Connect(iPEndPoint, key);
+            if (p == null)
+                return p;
+
+            while (p.ConnectionState == ConnectionState.Outgoing)
+                await Task.Delay(10);
+            if (p.ConnectionState == ConnectionState.Disconnected)
+                throw new Exception("Failed to connect: " + p.EndPoint.ToString());
+
+            return p;
+        }
+    #endregion
+
+    public void SendToAll(object obj, DeliveryMethod deliveryMethod = DeliveryMethod.ReliableOrdered)
         {
             byte[] objGraph = Formatter.Serialize(obj);
             SendToAll(objGraph, deliveryMethod);

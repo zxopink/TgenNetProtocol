@@ -24,30 +24,31 @@ namespace TgenNetProtocol.Udp
             return RequestNatPunch(server.EndPoint, additionalInfo);
         }
 
-        public async Task<NetPeer> RequestNatPunch(IPEndPoint masterServerEndPoint, string additionalInfo = default)
+        public Task<NetPeer> RequestNatPunch(IPEndPoint masterServerEndPoint, string additionalInfo = default)
         {
-            TaskCompletionSource<NetPeer> intenrnalPeerTask = new TaskCompletionSource<NetPeer>();
-            TaskCompletionSource<NetPeer> externalPeerTask = new TaskCompletionSource<NetPeer>();
+            TaskCompletionSource<NetPeer> peerTask = new TaskCompletionSource<NetPeer>();
             EventBasedNatPunchListener natPunchListener = new EventBasedNatPunchListener();
-            natPunchListener.NatIntroductionSuccess += (targetEndPoint, type, token) =>
+            natPunchListener.NatIntroductionSuccess += async (targetEndPoint, type, token) =>
             {
-                Console.WriteLine(targetEndPoint + " has connected to " + this.LocalEP + " Connection: " + type);
-                OnNatIntroductionSuccess?.Invoke(targetEndPoint, type, token);
-                NetPeer partner = Connect(targetEndPoint, ConnectionKey);
+                try
+                {
+                    OnNatIntroductionSuccess?.Invoke(targetEndPoint, type, token);
+                    NetPeer partner = await ConnectAsync(targetEndPoint, ConnectionKey);
 
-                if (type == NatAddressType.Internal)
-                    intenrnalPeerTask.SetResult(partner);
-                else
-                    externalPeerTask.SetResult(partner);
+                    if (partner != null && !peerTask.Task.IsCompleted)
+                        peerTask.SetResult(partner);
+                }
+                catch (Exception e)
+                {
+                    
+                }
+
             };
             NatPunchEnabled = true;
             NatPunchModule.Init(natPunchListener);
             NatPunchModule.SendNatIntroduceRequest(masterServerEndPoint, additionalInfo ?? string.Empty);
 
-            var peers = await Task.WhenAll(intenrnalPeerTask.Task, externalPeerTask.Task);
-            while (peers[0].ConnectionState == ConnectionState.Outgoing && peers[1].ConnectionState == ConnectionState.Outgoing)
-                await Task.Delay(20);
-            return peers[0].ConnectionState == ConnectionState.Connected ? peers[0] : peers[1];
+            return peerTask.Task;
         }
 
         /// <summary>Used by the server side to manage Nat punch</summary>
