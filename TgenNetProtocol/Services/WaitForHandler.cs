@@ -7,25 +7,23 @@ namespace TgenNetProtocol
 {
     internal class WaitForHandler<TKey>
     {
-        public Dictionary<TKey, List<TaskCompletionSource<object>>> AwaitingRequests { get; private set; }
+        public Dictionary<TKey, TaskCompletionSource<object>> AwaitingRequests { get; private set; }
 
         public WaitForHandler()
         {
-            AwaitingRequests = new Dictionary<TKey, List<TaskCompletionSource<object>>>();
+            AwaitingRequests = new Dictionary<TKey, TaskCompletionSource<object>>();
         }
 
         public Task<object> WaitFor(TKey key)
         {
-            var taskSource = new TaskCompletionSource<object>();
-            if (AwaitingRequests.TryGetValue(key, out var reqs))
-                reqs.Add(taskSource);
+            if (AwaitingRequests.TryGetValue(key, out var waitingTask))
+                return waitingTask.Task;
             else
             {
-                var reqsStack = new List<TaskCompletionSource<object>>();
-                reqsStack.Add(taskSource);
-                AwaitingRequests.Add(key, reqsStack);
+                var taskSource = new TaskCompletionSource<object>();
+                AwaitingRequests.Add(key, taskSource);
+                return taskSource.Task;
             }
-            return taskSource.Task;
         }
 
         /// <returns>The value or default if value wasn't returned within the set timeout</returns>
@@ -40,35 +38,24 @@ namespace TgenNetProtocol
             Task result = await Task.WhenAny(waitTask, timeoutTask);
             if (result == timeoutTask)
             {
-                RemoveWaitingTask(key, waitTask);
+                RemoveWaitingTask(key);
                 return default;
             }
             return await waitTask;
         }
 
 
-        internal void RemoveWaitingTask(TKey key, Task task)
+        internal void RemoveWaitingTask(TKey key)
         {
-            if (AwaitingRequests.TryGetValue(key, out var reqs))
-            {
-                for (int i = 0; i < reqs.Count; i++)
-                {
-                    if (task == reqs[i].Task)
-                        reqs.RemoveAt(i);
-                    if (reqs.Count == 0)
-                        AwaitingRequests.Remove(key);
-                }
-            }
+            AwaitingRequests.Remove(key);
         }
 
         internal void OnPacket(TKey key, object obj)
         {
-            Type t = obj.GetType();
-            if (AwaitingRequests.TryGetValue(key, out var requests))
+            if (AwaitingRequests.TryGetValue(key, out var req))
             {
-                foreach (var req in requests)
-                    req.SetResult(obj);
-                AwaitingRequests.Remove(key);
+                req.SetResult(obj);
+                RemoveWaitingTask(key);
             }
         }
 
@@ -79,12 +66,7 @@ namespace TgenNetProtocol
             _disposed = true;
 
             foreach (var req in AwaitingRequests)
-            {
-                foreach (var taskCompl in req.Value)
-                    taskCompl.SetResult(default); //Complete all tasks
-
-                req.Value.Clear();
-            }
+                req.Value.SetResult(default);
             AwaitingRequests.Clear();
         }
     }
