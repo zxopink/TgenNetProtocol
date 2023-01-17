@@ -216,11 +216,13 @@ namespace TgenNetProtocol
             catch (Microsoft.CSharp.RuntimeBinder.RuntimeBinderException)
             {
                 //Methods mismatch, critical issue
+                //not related to client
                 throw;
             }
             catch (Exception e)
             {
-                AbortClient(client, e);
+                if(clients.Contains(client))
+                    AbortClient(client, e);
             }
         }
 
@@ -278,7 +280,11 @@ namespace TgenNetProtocol
                 Formatter.Serialize(stm, Message);
             }
             catch (SerializationException) { throw; } //Message cannot be serialized
-            catch (Exception) { if (throwOnError) throw; /*client left as the message was serialized*/ }
+            catch (Exception e) 
+            {
+                if(clients.Contains(client)) AbortClient(client, e);
+                if (throwOnError) throw; /*client left as the message was serialized*/ 
+            }
         }
 
         public void Send(object Message, IEnumerable<ClientsType> clients, bool throwOnError = false)
