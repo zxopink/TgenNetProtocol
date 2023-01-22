@@ -151,16 +151,23 @@ namespace TgenNetProtocol
             {
                 if (client)
                 {
-                    NetworkStream stm = client;
-                    Formatter.Serialize(stm, message);
+                    try
+                    {
+                        NetworkStream stm = client;
+                        Formatter.Serialize(stm, message);
+                    }
+                    catch (Exception)
+                    {
+                        Close();
+                        OnDisconnect?.Invoke();
+                        throw;
+                    }
                 }
                 else
                     throw new SocketException((int)SocketError.NotConnected);
             }
             catch (Exception) //Usually gets thrown when the server aborted/kicked the client
             {
-                Close();
-                OnDisconnect?.Invoke();
                 if (throwOnError)
                     throw;
             }
@@ -181,6 +188,7 @@ namespace TgenNetProtocol
             catch (SocketException)
             {
                 Close();
+                OnDisconnect?.Invoke();
                 throw;
             }    
         }
