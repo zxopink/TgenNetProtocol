@@ -125,14 +125,14 @@ namespace TgenNetProtocol
             }
         }
 
-        public async Task<bool> ConnectAsync(string ip, int port) =>
-            await Task.Run( () => Connect(ip, port));
+        public async Task<bool> ConnectAsync(string ip, int port, bool throwOnError = false) =>
+            await Task.Run( () => Connect(ip, port, throwOnError));
 
-        public async Task<bool> ConnectAsync(string ip, int port, string passKey) =>
-            await Task.Run(() => Connect(ip, port, Bytes.StrToBytes(passKey)));
+        public async Task<bool> ConnectAsync(string ip, int port, string passKey, bool throwOnError = false) =>
+            await Task.Run(() => Connect(ip, port, Bytes.StrToBytes(passKey), throwOnError));
 
-        public async Task<bool> ConnectAsync(string ip, int port, byte[] data) =>
-            await Task.Run(() => Connect(ip, port, data));
+        public async Task<bool> ConnectAsync(string ip, int port, byte[] data, bool throwOnError = false) =>
+            await Task.Run(() => Connect(ip, port, data, throwOnError));
 
         //TODO: make a proper binding
         public void Bind(IPEndPoint localEndPoint)
