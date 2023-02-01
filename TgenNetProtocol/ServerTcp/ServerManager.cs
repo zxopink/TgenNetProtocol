@@ -8,6 +8,7 @@ using System.Threading.Tasks;
 using System.Runtime.Serialization;
 using System.Security.Principal;
 using System.Collections.ObjectModel;
+using TgenNetProtocol.Services;
 
 namespace TgenNetProtocol
 {
@@ -18,6 +19,12 @@ namespace TgenNetProtocol
         public event NetworkActivity ClientDisconnectedEvent;
         public event Action<ClientsType, Exception> ClientAbortEvent;
         public event NetworkActivity ClientConnectedEvent;
+        
+        /// <param name="client">The client who's associated with the exception</param>
+        /// <param name="exception">The exception</param>
+        public delegate void DynamicExceptionHandle(ClientsType client, DynamicMethodException exception);
+        /// <summary>Fires when an exception throws on a dynamic method</summary>
+        public event DynamicExceptionHandle OnDynamicException;
 
         /// <param name="data">Client data when connecting</param>
         /// <param name="accept">Whether to accept the connection or not, accept is true if data and server password match</param>
@@ -219,9 +226,15 @@ namespace TgenNetProtocol
                 //not related to client
                 throw;
             }
+            catch (DynamicMethodException ex)
+            {
+                //Exception in one of the dynamic methods
+                OnDynamicException?.Invoke(client, ex);
+            }
             catch (Exception e)
             {
-                if(clients.Contains(client))
+                //Possible serialization error
+                if (clients.Contains(client))
                     AbortClient(client, e);
             }
         }

@@ -7,6 +7,7 @@ using System.Runtime.CompilerServices;
 using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
+using TgenNetProtocol.Services;
 
 namespace TgenNetProtocol
 {
@@ -95,10 +96,18 @@ namespace TgenNetProtocol
 
         private void InvokeInternal(params dynamic[] parameters)
         {
-            if (HasClientData)
-                _method(parameters[0], parameters[1]);
-            else
-                _method(parameters[0]);
+            try
+            {
+                if (HasClientData)
+                    _method(parameters[0], parameters[1]);
+                else
+                    _method(parameters[0]);
+            }
+            catch (Exception ex)
+            {
+                throw new DynamicMethodException(this, ex);
+            }
+
         }
 
         /// <summary>Invokes the function</summary>

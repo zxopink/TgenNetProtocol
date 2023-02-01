@@ -12,7 +12,7 @@
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <RepositoryUrl>https://github.com/zxopink/TgenNetProtocol</RepositoryUrl>
     <PackageTags>network; protocol; tcp</PackageTags>
-    <Version>0.7.0</Version>
+    <Version>0.7.2</Version>
 
     <IncludeUDP>false</IncludeUDP>
     <DefineConstants Condition="'$(IncludeUDP)' == 'true'">Include_UDP</DefineConstants>

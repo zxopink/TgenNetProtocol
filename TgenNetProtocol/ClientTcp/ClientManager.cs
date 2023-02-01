@@ -5,6 +5,7 @@ using System.Net.Sockets;
 using TgenSerializer;
 using System.Threading.Tasks;
 using System.Runtime.Serialization;
+using TgenNetProtocol.Services;
 
 namespace TgenNetProtocol
 {
@@ -33,6 +34,10 @@ namespace TgenNetProtocol
         {
             get { try { return new WebClient().DownloadString("http://icanhazip.com"); } catch (Exception) { return "Unable to load public IP"; } }
         }
+
+        public delegate void DynamicExceptionHandle(DynamicMethodException exception);
+        /// <summary>Fires when an exception throws on a dynamic method</summary>
+        public event DynamicExceptionHandle OnDynamicException;
 
         /// <summary>Returns a new socket of the protocol's type</summary>
         private Socket GetNewSocket()
@@ -184,6 +189,10 @@ namespace TgenNetProtocol
             try
             {
                 HandlePacket();
+            }
+            catch (DynamicMethodException ex)
+            {
+                OnDynamicException?.Invoke(ex);
             }
             catch (SocketException)
             {
