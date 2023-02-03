@@ -30,7 +30,8 @@ namespace TgenNetProtocol
         /// <param name="accept">Whether to accept the connection or not, accept is true if data and server password match</param>
         public delegate void RequestPending(Socket info, byte[] data, ref bool accept);
         public event RequestPending ClientPendingEvent;
-        public event Action<Socket> ClientDeclinedEvent;
+        public delegate void RequestDeclined(Socket declinedSocket, Exception reason);
+        public event RequestDeclined ClientDeclinedEvent;
         private List<ClientsType> clients = new List<ClientsType>();
         public ReadOnlyCollection<ClientsType> Clients => clients.AsReadOnly();
         private Socket listener;
@@ -162,20 +163,31 @@ namespace TgenNetProtocol
         {
             Socket socket = listener.Accept();
             socket.NoDelay = true; //disables delay which occures when sending small chunks of data
-            bool approved = await CheckPass(socket);
-
-            if (!approved)
+            
+            try
             {
-                ClientDeclinedEvent?.Invoke(socket);
-                socket.Send(new byte[] { 0 /*FAILED*/});
-                socket.Close();
-                return;
+                bool premission = await CheckPass(socket);
+                if (!premission)
+                {
+                    socket.Send(new byte[] { 0 /*FAILED*/});
+                    throw new SocketException((int)SocketError.AccessDenied);
+                }    
             }
-            socket.Send(new byte[] { 200 /*200 OK*/});
+            catch (Exception ex)
+            { 
+                ClientDeclinedEvent?.Invoke(socket, ex);
+                socket.Close();
+            }
 
-            ClientsType client = ClientsFactory.PeerConnection(socket, this);
-            clients.Add(client);
-            ClientConnectedEvent?.Invoke(client);
+            try
+            {
+                socket.Send(new byte[] { 200 /*200 OK*/});
+
+                ClientsType client = ClientsFactory.PeerConnection(socket, this);
+                clients.Add(client);
+                ClientConnectedEvent?.Invoke(client);
+            }
+            catch { /*Don't do anything*/ }
         }
 
         public async Task<bool> CheckPass(Socket s)
