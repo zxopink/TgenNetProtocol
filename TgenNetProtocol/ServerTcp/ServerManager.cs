@@ -171,18 +171,18 @@ namespace TgenNetProtocol
                 {
                     socket.Send(new byte[] { 0 /*FAILED*/});
                     throw new SocketException((int)SocketError.AccessDenied);
-                }    
+                }
+                socket.Send(new byte[] { 200 /*200 OK*/});
             }
             catch (Exception ex)
             { 
                 ClientDeclinedEvent?.Invoke(socket, ex);
                 socket.Close();
+                return;
             }
 
             try
             {
-                socket.Send(new byte[] { 200 /*200 OK*/});
-
                 ClientsType client = ClientsFactory.PeerConnection(socket, this);
                 clients.Add(client);
                 ClientConnectedEvent?.Invoke(client);
