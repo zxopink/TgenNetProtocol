@@ -161,11 +161,12 @@ namespace TgenNetProtocol
 
         private async void AcceptIncomingClient()
         {
-            Socket socket = listener.Accept();
-            socket.NoDelay = true; //disables delay which occures when sending small chunks of data
-            
+
+            Socket socket = null;
             try
             {
+                socket = listener.Accept();
+                socket.NoDelay = true; //disables delay which occures when sending small chunks of data
                 bool premission = await CheckPass(socket);
                 if (!premission)
                 {
@@ -175,7 +176,8 @@ namespace TgenNetProtocol
                 socket.Send(new byte[] { 200 /*200 OK*/});
             }
             catch (Exception ex)
-            { 
+            {
+                if (socket == null) return;
                 ClientDeclinedEvent?.Invoke(socket, ex);
                 socket.Close();
                 return;

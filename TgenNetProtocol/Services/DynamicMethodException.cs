@@ -16,6 +16,8 @@ namespace TgenNetProtocol.Services
         /// <summary> Gets the class instance on which the current delegate invokes the instance method.</summary>
         public INetworkObject Target => Delegate.Target as INetworkObject;
 
+        public override string StackTrace => InnerException.StackTrace + "\r\n" + base.StackTrace;
+
         public DynamicMethodException(MethodData method, Exception inner) : base(inner.Message, inner)
         {
             MethodData = method;

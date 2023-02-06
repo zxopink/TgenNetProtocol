@@ -137,8 +137,8 @@ namespace TgenNetProtocol
             return false;
         }
 
-        public static bool operator ==(MethodData a, MethodData b) => a.Equals(b);
-        public static bool operator !=(MethodData a, MethodData b) => !a.Equals(b);
+        public static bool operator ==(MethodData a, MethodData b) => a is null ? b is null : a.Equals(b);
+        public static bool operator !=(MethodData a, MethodData b) => !(a == b);
 
         public static explicit operator MethodData(Delegate method) =>
             new MethodData(method.Method, method.Target ?? throw new NullReferenceException("MethodData's parent cannot be null"));
